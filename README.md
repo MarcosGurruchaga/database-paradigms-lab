@@ -11,13 +11,13 @@ Laboratorio práctico DevOps y Full-Stack diseñado para desplegar, sembrar y an
 
 ## 📊 Matriz Comparativa de Paradigmas
 
-| Paradigma | Motor | Modelo / Estructura | Caso de Uso Representativo | Dashboard Web | Puerto Motor |
+| Paradigma | Motor | Concepto Pedagogico Clave | Caso de Uso para la Clase | Dashboard Web | Puerto Motor |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Relacional (SQL)** | **PostgreSQL 16** | Tablas, Filas, Columnas y Claves Foráneas (ACID) | Transacciones de Órdenes y Usuarios con Integridad | [Adminer](http://localhost:8080) (`:8080`) | `5432` |
-| **Documental (NoSQL)** | **MongoDB 7.0** | Colecciones y Documentos BSON / JSON Dinámicos | Perfiles flexibles de Desarrolladores y Proyectos | [Mongo Express](http://localhost:8081) (`:8081`) | `27017` |
-| **Clave-Valor** | **Redis 7.4** | Estructuras en Memoria (Hash, ZSet, String) con TTL | Sesiones con expiración, Rate-Limiting y Leaderboard | [RedisInsight](http://localhost:5540) (`:5540`) | `6379` |
-| **Grafos** | **Neo4j 5.20** | Nodos, Relaciones Tipadas y Propiedades (Cypher) | Topología de Microservicios y Análisis de Impacto | [Neo4j Browser](http://localhost:7474) (`:7474`) | `7687` (Bolt) |
-| **Series Temporales** | **InfluxDB 2.7** | Puntos `(Timestamp, Tag, Field)` en Línea temporal | Telemetría de Servidores, CPU, Memoria y Sensores | [InfluxDB Web UI](http://localhost:8086) (`:8086`) | `8086` |
+| **Relacional (SQL)** | **PostgreSQL 16** | Tablas estrictas e integridad referencial (ACID) | Transacciones de Usuarios y Pedidos vinculados | [Adminer](http://localhost:8080) (`:8080`) | `5433` (host) / `5432` |
+| **Documental (NoSQL)** | **MongoDB 7.0** | **Objetos que van mutando** (Schema Evolution) | Clientes cuyas versiones agregan campos sin `ALTER TABLE` | [Mongo Express](http://localhost:8081) (`:8081`) | `27017` |
+| **Clave-Valor** | **Redis 7.4** | **Recuperar datos puntuales** en RAM ($O(1)$) | Sesiones por Token, Flags globales y Contadores | [RedisInsight](http://localhost:5540) (`:5540`) | `6379` |
+| **Grafos** | **Neo4j 5.20** | **Mini Red Social** (Relaciones de 1er nivel) | Amigos, Likes y Algoritmo "Amigos de mis amigos" | [Neo4j Browser](http://localhost:7474) (`:7474`) | `7687` (Bolt) |
+| **Series Temporales / Columnar** | **InfluxDB 2.7** | **Muchos datos para analizar** (Estilo BigQuery) | Analitica masiva y agregaciones temporales de telemetria | [InfluxDB Web UI](http://localhost:8086) (`:8086`) | `8086` |
 
 ---
 

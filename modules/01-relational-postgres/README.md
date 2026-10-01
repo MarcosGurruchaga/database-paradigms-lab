@@ -10,16 +10,16 @@ El paradigma relacional organiza la información en **tablas** compuestas por fi
 
 ---
 
-## 2. Configuración en el Laboratorio
+## 2. Configuracion en el Laboratorio
 - **Motor:** `PostgreSQL 16 Alpine`
-- **Puerto:** `5432`
+- **Puerto Host:** `5433` (mapeado a `5432` interno para evitar conflictos con PostgreSQL local)
 - **Volumen local:** `./data/postgres`
 - **Base de datos:** `lab_sql`
 - **Dashboard Web:** Adminer en [http://localhost:8080](http://localhost:8080)
   - **Sistema:** PostgreSQL
   - **Servidor:** `postgres`
   - **Usuario:** `postgres`
-  - **Contraseña:** `postgrespassword`
+  - **Contrasena:** `postgrespassword`
   - **Base de datos:** `lab_sql`
 
 ---

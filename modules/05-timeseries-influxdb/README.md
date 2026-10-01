@@ -1,13 +1,12 @@
-# Paradigma de Series Temporales - InfluxDB 2.x
+# Paradigma de Series Temporales y Columnar - InfluxDB 2.x
 
-## 1. Concepto y Filosofía
-Una base de datos de series temporales (TSDB) está optimizada para almacenar y consultar pares de datos `(timestamp, valor)` a velocidades masivas de ingestión. Cuenta con algoritmos de compresión específicos (como Gorilla o delta-of-delta) y políticas de retención automática de datos (downsampling / data lifecycle).
+## 1. Concepto Pedagogico: "Muchos datos para analizar" (Estilo BigQuery / TSDB)
+En los sistemas transaccionales tradicionales (OLTP como PostgreSQL), los datos se leen fila por fila. Si tienes **10 millones de registros de telemetria o ventas** y quieres calcular el promedio o la suma de una columna, el motor tradicional sufre un cuello de botella brutal leyendo filas completas de disco.
 
-### ¿Cuándo usarlo?
-- Monitoreo de infraestructura y DevOps (CPU, memoria, latencias, throughput, logs de red).
-- Internet de las Cosas (IoT) y telemetría de sensores industriales (temperatura, presión, vibración).
-- Análisis de mercados financieros (precios de acciones tick-by-tick, crypto).
-- Métricas de uso de producto y análisis de eventos continuos.
+### ¿Por que el Enfoque Columnar / Time-Series (InfluxDB / BigQuery)?
+- **Almacenamiento por Columnas:** Solo se leen de disco las columnas que entran en la consulta (ej. `cpu_utilizada` o `peticiones_por_seg`), ignorando el resto.
+- **Compresion masiva:** Al tener millones de numeros del mismo tipo en una misma columna, algoritmos como *Gorilla* o *Delta-of-Delta* comprimen los datos hasta un 90%.
+- **Analitica Vectorizada:** Diseñado especificamente para aggregations masivas (`mean()`, `sum()`, `max()`, `percentile()`) sobre inmensos volumenes de informacion.
 
 ---
 

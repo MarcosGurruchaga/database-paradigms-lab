@@ -29,7 +29,7 @@ function Show-Dashboards {
     Write-Host ""
     Write-Host "[+] Dashboards e Interfaces Web de Gestion:" -ForegroundColor Green
     Write-Host "  1. PostgreSQL (Adminer UI):   http://localhost:8080" -ForegroundColor White
-    Write-Host "     - Servidor: postgres | Usuario: postgres | Clave: postgrespassword | Base: lab_sql" -ForegroundColor DarkGray
+    Write-Host "     - Servidor: postgres | Puerto Host: 5433 | Usuario: postgres | Clave: postgrespassword | Base: lab_sql" -ForegroundColor DarkGray
     Write-Host "  2. MongoDB (Mongo Express):   http://localhost:8081" -ForegroundColor White
     Write-Host "     - Acceso directo sin autenticacion basica para desarrollo local" -ForegroundColor DarkGray
     Write-Host "  3. Redis (RedisInsight):      http://localhost:5540" -ForegroundColor White

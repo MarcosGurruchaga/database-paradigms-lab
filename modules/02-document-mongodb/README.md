@@ -1,13 +1,14 @@
-# Paradigma Documental (NoSQL) - MongoDB
+## 1. Concepto Pedagogico: "Objetos que van mutando" (Schema Evolution)
+El paradigma orientado a documentos almacena la informacion en formatos semi-estructurados como **JSON / BSON** (Binary JSON).
 
-## 1. Concepto y Filosofía
-El paradigma orientado a documentos almacena la información en formatos semi-estructurados como **JSON / BSON** (Binary JSON). Cada documento es una entidad auto-contenida con su propio esquema dinámico (Schema-less o Schema-flexible).
+### ¿Por que triunfa con "Objetos que van mutando"?
+En una base de datos relacional (SQL), si la aplicacion evoluciona y se agregan atributos, es obligatorio ejecutar un `ALTER TABLE` que bloquea la base de datos o deja columnas `NULL` vacias.
+En MongoDB, **cada documento es polimorfico**: pueden convivir en la misma coleccion documentos de la version 1 (MVP simple), version 2 (con arreglos y telefonos) y version 3 (con suscripciones complejas y preferencias anidadas) sin migraciones forzadas.
 
-### ¿Cuándo usarlo?
-- Catálogos de productos con atributos variables (ropa con talles y colores vs electrodomésticos con voltaje).
-- Gestión de contenido (CMS), blogs, perfiles de usuario enriquecidos.
-- Aplicaciones ágiles con esquemas que evolucionan rápidamente en sprints.
-- Alta velocidad de lectura/escritura horizontal mediante sharding.
+### ¿Cuando usarlo?
+- Entidades y catalogos cuyos atributos cambian frecuentemente entre sprints.
+- Aplicaciones donde diferentes tipos de usuarios o productos tienen datos dispares.
+- Modelos jerarquicos anidados (evita hacer 4 o 5 JOINs para armar una vista de perfil).
 
 ---
 
