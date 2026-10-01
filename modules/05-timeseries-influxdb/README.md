@@ -1,16 +1,23 @@
 # Paradigma de Series Temporales y Columnar - InfluxDB 2.x
 
-## 1. Concepto Pedagogico: "Muchos datos para analizar" (Estilo BigQuery / TSDB)
-En los sistemas transaccionales tradicionales (OLTP como PostgreSQL), los datos se leen fila por fila. Si tienes **10 millones de registros de telemetria o ventas** y quieres calcular el promedio o la suma de una columna, el motor tradicional sufre un cuello de botella brutal leyendo filas completas de disco.
+## 1. Concepto Pedagogico: "Muchos datos continuos para analizar"
+En los motores relacionales (OLTP como PostgreSQL), los datos se leen fila por fila. Si tienes millones de eventos de telemetria continua y quieres calcular promedios o agregaciones, el motor sufre un cuello de botella brutal leyendo filas completas de disco.
 
-### ¿Por que el Enfoque Columnar / Time-Series (InfluxDB / BigQuery)?
-- **Almacenamiento por Columnas:** Solo se leen de disco las columnas que entran en la consulta (ej. `cpu_utilizada_pct` o `peticiones_por_seg`), ignorando el resto.
-- **Compresion masiva:** Al tener millones de numeros continuos en una misma columna, algoritmos como *Gorilla* comprimen hasta un 90% el espacio.
-- **Analitica Vectorizada:** Diseñado especificamente para agregaciones matematicas masivas (`mean()`, `sum()`, `max()`, `percentile()`) sobre grandes volumenes de series de tiempo.
+InfluxDB y los motores de series temporales (con almacenamiento columnar) resuelven esto:
+- **Almacenamiento por Columnas:** Solo lee de disco las columnas que entran en la consulta (ej. `presencia_dementores_pct` o `hechizos_por_minuto`).
+- **Compresion Extrema (Gorilla):** Comprime hasta un 90% del espacio al tratar con numeros continuos sobre el tiempo.
+- **Agregaciones Vectorizadas:** Diseñado para calcular medias, percentiles y sumas en microsegundos.
 
 ---
 
-## 2. Configuracion en el Laboratorio
+## 2. Ejemplo Divertido para la Clase: Telemetria Magica en Hogwarts (Harry Potter)
+Modelamos sensores analiticos distribuidos en el castillo de Hogwarts monitoreando dos ambientes en disputa:
+- **`Torre-Gryffindor`:** Practica clandestina de encantamientos del Ejercito de Dumbledore. Observamos curvas suaves crecientes de `hechizos_por_minuto` y niveles altos de energia luminosa (`energia_lumos_lux`).
+- **`Mazmorras-Slytherin`:** Actividad calculada habitual, pero con una incursion abrupta de **Dementores** patrullando las mazmorras: la `presencia_dementores_pct` salta de 8% a mas de 75%, el nivel de Lumos colapsa y se registran hechizos defensivos desesperados.
+
+---
+
+## 3. Configuracion en el Laboratorio
 - **Motor:** `InfluxDB 2.7 Alpine`
 - **Puerto:** `8086`
 - **Volumen local:** `./data/influxdb`
@@ -23,30 +30,26 @@ En los sistemas transaccionales tradicionales (OLTP como PostgreSQL), los datos 
 
 ---
 
-## 3. Demostracion Visual en InfluxDB Data Explorer
+## 4. Demostracion Visual en InfluxDB Data Explorer
 
-Para mostrar la comparacion en la clase en vivo dentro de [http://localhost:8086](http://localhost:8086):
+Para proyectar las metricas en vivo a los alumnos dentro de [http://localhost:8086](http://localhost:8086):
 
 1. Ve a la pestana **Data Explorer** (icono de graficos en el menu izquierdo).
 2. En el panel inferior:
    - **FROM:** Selecciona `telemetry-bucket`.
-   - **_measurement:** Selecciona `metricas_servidores`.
-   - **_field:** Selecciona `cpu_utilizada_pct` (o `memoria_utilizada_pct` o `peticiones_por_seg`).
-   - **host:** Marca ambos casilleros (`srv-prod-latam-01` y `srv-prod-latam-02`).
+   - **_measurement:** Selecciona `telemetria_hogwarts`.
+   - **_field:** Selecciona `presencia_dementores_pct` (o `hechizos_por_minuto`).
+   - **ubicacion:** Marca ambos casilleros (`Torre-Gryffindor` y `Mazmorras-Slytherin`).
 3. En la esquina superior derecha, selecciona el rango de tiempo: **Past 2h** (o **Past 1h**).
 4. Haz clic en el boton azul **SUBMIT**.
 
-### ¿Que veras en el Grafico? (Diferenciacion para los Alumnos)
-* **`srv-prod-latam-01` (Linea azul/verde - Servidor Web API):** Curva suave y oscilatoria que refleja el flujo diario organico de trafico de usuarios (30% a 72% de CPU).
-* **`srv-prod-latam-02` (Linea naranja/purpura - Servidor Batch Worker):** Linea base muy baja y fria (20% CPU) que repentinamente sufre un **pico abrupto sostenido al 88% de CPU** cuando se procesa un lote de tareas pesadas, y luego cae a reposo.
-
 ---
 
-## 4. Consulta Directa con Lenguaje FLUX
+## 5. Consulta Directa con Lenguaje FLUX
 ```flux
 from(bucket: "telemetry-bucket")
   |> range(start: -2h)
-  |> filter(fn: (r) => r["_measurement"] == "metricas_servidores")
-  |> filter(fn: (r) => r["_field"] == "cpu_utilizada_pct")
-  |> yield(name: "comparativa_cpu")
+  |> filter(fn: (r) => r["_measurement"] == "telemetria_hogwarts")
+  |> filter(fn: (r) => r["_field"] == "presencia_dementores_pct")
+  |> yield(name: "alerta_dementores")
 ```

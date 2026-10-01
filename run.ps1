@@ -38,6 +38,8 @@ function Show-Dashboards {
     Write-Host "     - Usuario: neo4j | Contrasena: neo4jpassword" -ForegroundColor DarkGray
     Write-Host "  5. InfluxDB (Influx Web UI):  http://localhost:8086" -ForegroundColor White
     Write-Host "     - Usuario: influxadmin | Contrasena: influxpassword123 | Org: devops-lab" -ForegroundColor DarkGray
+    Write-Host "  6. Cassandra (Cassandra Web): http://localhost:8082" -ForegroundColor White
+    Write-Host "     - Visor web interactivo de Keyspaces, Column Families, Particiones y CQL" -ForegroundColor DarkGray
     Write-Host ""
 }
 
@@ -89,6 +91,7 @@ switch ($Action) {
         Start-Process "http://localhost:5540"
         Start-Process "http://localhost:7474"
         Start-Process "http://localhost:8086"
+        Start-Process "http://localhost:8082"
         Write-Host "[OK] Pestanas abiertas en el navegador." -ForegroundColor Green
     }
 

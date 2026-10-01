@@ -4,5 +4,7 @@ pymongo>=4.11.0
 redis>=5.2.0
 neo4j>=5.28.0
 influxdb-client>=1.48.0
+cassandra-driver>=3.29.0
+pyasyncore>=1.0.5
 rich>=13.9.0
 python-dotenv>=1.0.1

@@ -5,12 +5,14 @@
 LABORATORIO MULTI-PARADIGMA DE BASES DE DATOS (EDICION PEDAGOGICA PARA CLASES)
 Script de Sembrado (Seed) y Demostracion Funcional
 
-Paradigmas y Casos de Uso Explicados:
-  1. Relacional (SQL) -> PostgreSQL: Tablas estructuradas fijas e integridad ACID
-  2. Documental (NoSQL) -> MongoDB: Objetos flexibles que van mutando (Schema Evolution)
-  3. Clave-Valor -> Redis: Recuperacion puntual ultra-rapida por clave O(1)
-  4. Grafos -> Neo4j: Mini Red Social (Amigos, Seguidores, Likes y Recomendacion)
-  5. Series Temporales / Columnar -> InfluxDB: Analitica de grandes volumenes de metricas
+Paradigmas y Casos de Uso Explicados con Ejemplos Divertidos:
+  1. Relacional (SQL) -> PostgreSQL: Estructura rigida e integridad referencial (ACID)
+  2. Documental (NoSQL) -> MongoDB: Schema Evolution / Objetos que mutan (Los Simpsons)
+  3. Clave-Valor -> Redis: Acceso puntual ultra-rapido O(1) en RAM con TTL (Death Note)
+  4. Grafos -> Neo4j: Red de relaciones y traversals interdimensionales (Rick y Morty)
+  5. Series Temporales -> InfluxDB: Telemetria continua en tiempo real (Harry Potter / Hogwarts)
+  6. Familias de Columnas (Wide-Column) -> Apache Cassandra: Big Data masivo de alta escritura,
+     particionado distribuido y clustering keys (Fullmetal Alchemist / Titanes)
 =============================================================================
 """
 
@@ -18,6 +20,8 @@ import sys
 import os
 import time
 import argparse
+import math
+import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any
 
@@ -51,10 +55,20 @@ from neo4j import GraphDatabase
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+# Cassandra Driver (con pyasyncore para compatibilidad con Python 3.12+)
+try:
+    import pyasyncore
+except ImportError:
+    pass
+
+from cassandra.cluster import Cluster
+from cassandra.query import SimpleStatement
+from cassandra import ConsistencyLevel
+
 console = Console(highlight=False)
 
 # =============================================================================
-# CONFIGURACION POR DEFECTO
+# CONFIGURACION DE CONEXION POR DEFECTO
 # =============================================================================
 CONFIG = {
     "postgres": {
@@ -86,6 +100,11 @@ CONFIG = {
         "token": os.getenv("INFLUXDB_TOKEN", "lab-super-secret-admin-token-2026"),
         "org": os.getenv("INFLUXDB_ORG", "devops-lab"),
         "bucket": os.getenv("INFLUXDB_BUCKET", "telemetry-bucket")
+    },
+    "cassandra": {
+        "host": os.getenv("CASSANDRA_HOST", "127.0.0.1"),
+        "port": int(os.getenv("CASSANDRA_PORT", "9042")),
+        "keyspace": "defensa_amestris"
     }
 }
 
@@ -105,11 +124,11 @@ def retry_connection(func, engine_name: str, max_retries: int = 6, delay: int = 
 
 # =============================================================================
 # 1. PARADIGMA RELACIONAL (SQL): PostgreSQL
-# CONCEPTO CLAVE: Estructura rigida en tablas, integridad referencial y ACID
+# CONCEPTO CLAVE: Estructura fija en tablas, integridad referencial y ACID
 # =============================================================================
 def demo_postgresql():
     console.rule("[bold cyan]1. PARADIGMA RELACIONAL (SQL) - PostgreSQL[/]")
-    console.print("[italic white]Concepto: Tablas estrictas, columnas tipadas e integridad referencial (claves foraneas).[/]\n")
+    console.print("[italic white]Concepto: Tablas estrictas, columnas tipadas, integridad referencial (FK) y garantias ACID.[/]\n")
 
     cfg = CONFIG["postgres"]
 
@@ -160,24 +179,24 @@ def demo_postgresql():
         );
     """)
 
-    # Sembrado representativo
+    # Sembrado representativo del ambito academico de la catedra
     usuarios = [
-        ("Dra. Valeria Ramos", "valeria@universidad.edu", "Profesora Titular"),
-        ("Marcos Gurruchaga", "marcos@universidad.edu", "Ayudante de Catedra"),
-        ("Ana Gomez", "ana@universidad.edu", "Estudiante"),
-        ("Carlos Silva", "carlos@universidad.edu", "Estudiante")
+        ("Dra. Valeria Ramos", "valeria.ramos@universidad.edu", "Profesora Titular"),
+        ("Marcos Gurruchaga", "marcos.gurruchaga@universidad.edu", "Ayudante de Catedra"),
+        ("Ana Gomez", "ana.gomez@estudiantes.edu", "Estudiante"),
+        ("Carlos Silva", "carlos.silva@estudiantes.edu", "Estudiante")
     ]
     cursor.executemany("INSERT INTO usuarios (nombre, email, categoria) VALUES (%s, %s, %s);", usuarios)
 
     pedidos = [
-        (1, "Suscripcion Cloud Educativa", 120.00, "completado"),
-        (2, "Licencia Docker Pro", 60.00, "completado"),
+        (1, "Licencia Software Servidor Academico", 150.00, "completado"),
+        (2, "Teclado Mecanico para Correcciones", 85.00, "completado"),
         (2, "Libro Diseno de Sistemas Distribuidos", 45.50, "completado"),
-        (3, "Curso Bases de Datos NoSQL", 25.00, "completado"),
-        (4, "Teclado Ergonomico", 110.00, "pendiente")
+        (3, "Manual de Bases de Datos NoSQL", 30.00, "completado"),
+        (4, "Cuaderno de Laboratorio y Guias", 15.00, "pendiente")
     ]
     cursor.executemany("INSERT INTO pedidos (usuario_id, producto, precio, estado) VALUES (%s, %s, %s, %s);", pedidos)
-    console.print(f"[green][OK] Creadas tablas DDL relacionales con integridad referencial (FK).[/]")
+    console.print(f"[green][OK] DDL ejecutado: Tablas relacionales 'usuarios' y 'pedidos' creadas con FK estricta.[/]")
     console.print(f"[green][OK] Sembrados {len(usuarios)} usuarios y {len(pedidos)} pedidos vinculados.[/]\n")
 
     # Consulta representativa: JOIN + GROUP BY
@@ -195,7 +214,7 @@ def demo_postgresql():
     """)
     filas = cursor.fetchall()
 
-    tabla = Table(title="PostgreSQL: Consulta Analitica con JOIN y Agrupacion", box=box.ROUNDED)
+    tabla = Table(title="PostgreSQL: Consulta con JOIN y Agrupacion Agregada", box=box.ROUNDED)
     tabla.add_column("ID", justify="center", style="cyan")
     tabla.add_column("Usuario", style="white")
     tabla.add_column("Categoria", style="magenta")
@@ -214,11 +233,11 @@ def demo_postgresql():
 # =============================================================================
 # 2. PARADIGMA DOCUMENTAL (NoSQL): MongoDB
 # CONCEPTO CLAVE: "Objetos que van mutando" (Schema Evolution / Polimorfismo)
-# En una misma coleccion conviven versiones con campos dinamicos sin ALTER TABLE
+# EJEMPLO: Los Simpsons - Diferentes temporadas y facetas en una misma coleccion
 # =============================================================================
 def demo_mongodb():
     console.rule("[bold green]2. PARADIGMA DOCUMENTAL (NoSQL) - MongoDB[/]")
-    console.print("[italic white]Concepto: Objetos que van mutando en el tiempo (Schema Evolution) sin migraciones rigidas de tabla.[/]\n")
+    console.print("[italic white]Concepto: Schema Evolution y Polimorfismo. Objetos que mutan de atributos sin requerir 'ALTER TABLE'.[/]\n")
 
     cfg = CONFIG["mongodb"]
     uri = f"mongodb://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/"
@@ -230,81 +249,84 @@ def demo_mongodb():
 
     client = retry_connection(connect, "MongoDB")
     db = client[cfg["dbname"]]
-    coleccion = db["usuarios_evolutivos"]
+    coleccion = db["ciudadanos_springfield"]
     coleccion.delete_many({})
 
-    # Demostracion de objetos que mutan en diferentes generaciones de la aplicacion:
-    documentos_mutantes = [
-        # Generacion 1 (Version Inicial MVP): Datos planos basicos
+    # Demostracion de Schema Evolution a lo largo de las temporadas de la serie:
+    simpsons_mutantes = [
+        # Documento 1 (Temporada 1 - MVP Inicial de la serie): Estructura plana basica
         {
-            "version_schema": 1,
-            "username": "lucas99",
-            "nombre": "Lucas Martinez",
-            "email": "lucas@example.com",
-            "fecha_registro": "2023-01-15"
+            "temporada_aparicion": 1,
+            "nombre": "Homero J. Simpson",
+            "edad": 39,
+            "ocupacion": "Inspector de Seguridad del Sector 7G",
+            "direccion_plana": "Avenida Siempreviva 742",
+            "frase_iconica": "D'oh!",
+            "hobbies": ["Ver television", "Tomar cerveza Duff"]
         },
-        # Generacion 2 (La app suma telefonos multiples y direccion anidada):
+        # Documento 2 (Temporada 4 - La app evoluciona: agrega listas y subdocumentos anidados):
         {
-            "version_schema": 2,
-            "username": "sofia_dev",
-            "nombre": "Sofia Valenzuela",
-            "email": "sofia@example.com",
-            "telefonos": ["+54 11 5555-1234", "+54 11 9999-8888"],
+            "temporada_aparicion": 4,
+            "nombre": "Marjorie Bouvier Simpson",
+            "rol": "Ama de casa y Pacificadora",
+            "hijos": ["Bart", "Lisa", "Maggie"],
+            "hobbies": ["Pintura mural", "Tejido", "Bolos con las Boludas"],
             "direccion": {
-                "calle": "Av. Corrientes 1234",
-                "ciudad": "Buenos Aires",
-                "pais": "Argentina"
+                "calle": "Avenida Siempreviva 742",
+                "ciudad": "Springfield",
+                "estado": "Desconocido (cerca de Shelbyville)"
             },
-            "activo": True
+            "licencia_conducir": {
+                "activa": True,
+                "infracciones": 0
+            }
         },
-        # Generacion 3 (Version moderna: Suma suscripcion SaaS, cargo de ayudante y metadatos):
+        # Documento 3 (Temporada 10+ - Polimorfismo extremo: Alter-egos multiples, estructura medica y membresias):
         {
-            "version_schema": 3,
-            "username": "mgurruchaga",
-            "nombre": "Marcos Gurruchaga",
-            "rol": "Ayudante de Catedra",
-            "materia": "Bases de Datos",
-            "email": "marcos@universidad.edu",
-            "telefonos": ["+54 11 4444-7777"],
-            "suscripcion": {
-                "plan": "Educativo Cloud Pro",
-                "auto_renovacion": True,
-                "limite_contenedores": 50
+            "temporada_aparicion": 10,
+            "nombre": "Homero J. Simpson",
+            "alter_egos": [
+                {"nombre": "Don Barredora", "vehiculo": "Camion con pala quitanieves", "exito": True},
+                {"nombre": "Cosme Fulanito", "disfraz": "Bigote postizo y galera", "exito": False},
+                {"nombre": "El Hombre Pie", "arma": "Pasteles de crema en la cara", "exito": True},
+                {"nombre": "Astronauta", "logro": "Comio papitas flotando en gravedad cero", "exito": True}
+            ],
+            "ficha_medica_dr_hibbert": {
+                "crayones_en_el_cerebro": 1,
+                "infartos_superados": 3,
+                "tolerancia_alcohol": "Sobrehumana"
             },
-            "preferencias": {
-                "tema_oscuro": True,
-                "notificaciones": {"email": True, "discord": True, "sms": False}
-            },
-            "skills": ["Docker", "Neo4j", "MongoDB", "Redis", "PostgreSQL"],
-            "activo": True
+            "membresias": ["Club de los Magios (Numero 908)", "Equipo de Bolos Los Pin Pals"],
+            "deuda_taberna_moe_usd": 1540.50
         }
     ]
 
-    coleccion.insert_many(documentos_mutantes)
-    console.print(f"[green][OK] Insertados 3 documentos con esquemas totalmente diferentes (Generaciones v1, v2 y v3).[/]")
-    console.print("[dim]Nota para la clase: Ninguno requirio ejecutar un 'ALTER TABLE'. Conviven en la misma coleccion.[/]\n")
+    coleccion.insert_many(simpsons_mutantes)
+    console.print(f"[green][OK] Insertados {len(simpsons_mutantes)} documentos de Los Simpsons con estructuras totalmente polimorficas.[/]")
+    console.print("[dim]Nota para la clase: Homero v1 tiene campos planos, Marge tiene arrays y subdocumentos, y Homero v10 tiene alter-egos y ficha medica sin ningun ALTER TABLE.[/]\n")
 
-    # Consulta flexible: Filtrar por atributos anidados que solo existen en versiones avanzadas
+    # Consulta y exposicion en tabla
     resultados = list(coleccion.find())
 
-    tabla = Table(title="MongoDB: Objetos con Esquema Evolutivo (Diferentes Atributos en una Coleccion)", box=box.ROUNDED)
-    tabla.add_column("Gen", justify="center", style="cyan")
-    tabla.add_column("Usuario", style="white")
-    tabla.add_column("Estructura de Campos Presentes", style="yellow")
-    tabla.add_column("Objeto Anidado / Atributo Dinamico", style="green")
+    tabla = Table(title="MongoDB: Objetos que Mutan en el Tiempo (Coleccion 'ciudadanos_springfield')", box=box.ROUNDED)
+    tabla.add_column("Temporada", justify="center", style="cyan")
+    tabla.add_column("Personaje", style="bold white")
+    tabla.add_column("Campos Presentes en el Documento", style="yellow")
+    tabla.add_column("Estructura Dinamica Destacada", style="green")
 
     for doc in resultados:
-        campos = list(doc.keys())
-        campos.remove("_id")
-        gen = f"v{doc.get('version_schema', 1)}"
+        campos = [k for k in doc.keys() if k != "_id"]
+        temp = f"Temp {doc.get('temporada_aparicion', 1)}"
         
-        detalle = "Solo campos planos"
-        if "direccion" in doc:
-            detalle = f"Direccion: {doc['direccion']['ciudad']}, {doc['direccion']['pais']}"
-        elif "suscripcion" in doc:
-            detalle = f"Plan: {doc['suscripcion']['plan']} (Skills: {len(doc.get('skills', []))})"
+        if "alter_egos" in doc:
+            nombres_egos = [e["nombre"] for e in doc["alter_egos"]]
+            detalle = f"Alter-Egos: {', '.join(nombres_egos)} | Crayones: {doc['ficha_medica_dr_hibbert']['crayones_en_el_cerebro']}"
+        elif "direccion" in doc:
+            detalle = f"Hijos: {', '.join(doc.get('hijos', []))} | Dir: {doc['direccion']['calle']}"
+        else:
+            detalle = f"Frase: '{doc.get('frase_iconica')}' | Ocupacion: {doc.get('ocupacion')}"
 
-        tabla.add_row(gen, doc["nombre"], ", ".join(campos), detalle)
+        tabla.add_row(temp, doc["nombre"], ", ".join(campos[:5]) + ("..." if len(campos) > 5 else ""), detalle)
 
     console.print(tabla)
     client.close()
@@ -313,12 +335,12 @@ def demo_mongodb():
 
 # =============================================================================
 # 3. PARADIGMA CLAVE-VALOR: Redis
-# CONCEPTO CLAVE: "Recuperar datos facilmente puntuales" por Key en O(1)
-# No hay indices complejos: si sabes la clave, el acceso es en sub-milisegundos
+# CONCEPTO CLAVE: "Recuperar datos facilmente puntuales" en O(1) en RAM
+# EJEMPLO: Death Note - Victimas con TTL de 40s, Reglas del Shinigami y Sospechosos de L
 # =============================================================================
 def demo_redis():
     console.rule("[bold red]3. PARADIGMA CLAVE-VALOR - Redis[/]")
-    console.print("[italic white]Concepto: Acceso puntual directo por Clave en memoria RAM con complejidad O(1) y latencia sub-milisegundo.[/]\n")
+    console.print("[italic white]Concepto: Lectura y escritura ultra-rapida por Clave puntual en RAM con complejidad O(1) y expiracion automatica (TTL).[/]\n")
 
     cfg = CONFIG["redis"]
 
@@ -329,82 +351,64 @@ def demo_redis():
 
     r = retry_connection(connect, "Redis")
 
-    # Caso 1: Recuperacion puntual de Sesion de Usuario por Token (Hash + TTL)
-    token_ayudante = "session:tok_9942"
-    r.hset(token_ayudante, mapping={
-        "usuario_id": "42",
-        "username": "mgurruchaga",
-        "rol": "ayudante_catedra",
-        "cargo": "Ayudante de Catedra",
-        "email": "marcos@universidad.edu",
-        "login_ip": "192.168.1.100"
+    # 1. HASH con TTL de 40 Segundos (Regla Sagrada del Death Note)
+    # "Si la causa de muerte no se especifica dentro de los 40 segundos, la persona morira de paro cardiaco"
+    clave_victima = "deathnote:victima:kuro_otoishi"
+    r.hset(clave_victima, mapping={
+        "nombre": "Kuro Otoishi",
+        "crimen": "Secuestro de 8 rehenes en guarderia",
+        "causa_muerte": "Paro cardiaco fulminante",
+        "anotado_por": "Kira (Light Yagami)",
+        "hora_anotacion": datetime.now(timezone.utc).strftime("%H:%M:%S")
     })
-    r.expire(token_ayudante, 3600)  # Expira en 1 hora
+    r.expire(clave_victima, 40)  # Expira en 40 segundos exactos
 
-    token_titular = "session:tok_8800"
-    r.hset(token_titular, mapping={
-        "usuario_id": "1",
-        "username": "vramos",
-        "rol": "profesora_titular",
-        "cargo": "Profesora Titular",
-        "email": "valeria@universidad.edu",
-        "login_ip": "192.168.1.10"
-    })
-    r.expire(token_titular, 3600)
+    # 2. STRINGS PUNTUALES: Reglas del Shinigami Ryuk
+    r.set("deathnote:regla:01", "La persona cuyo nombre sea escrito en esta libreta morira.")
+    r.set("deathnote:regla:02", "Esta libreta no surtira efecto a menos que el escritor tenga en mente el rostro de la persona.")
 
-    token_alumna = "session:tok_1050"
-    r.hset(token_alumna, mapping={
-        "usuario_id": "50",
-        "username": "anagomez",
-        "rol": "estudiante",
-        "email": "ana@universidad.edu",
-        "login_ip": "192.168.1.105"
-    })
-    r.expire(token_alumna, 3600)
+    # 3. CONTADOR ATOMICO (INCRBY): Contador de criminales juzgados por Kira
+    clave_contador = "kira:contador:criminales_eliminados"
+    r.set(clave_contador, "1240")
+    r.incrby(clave_contador, 1)  # Incremento atomico en nanosegundos sin locks
 
-    # Caso 2: Recuperacion puntual de Configuracion Global / Feature Flags
-    r.set("config:sistema:mantenimiento", "false")
-    r.set("config:feature_flags:modo_oscuro", "true")
-
-    # Caso 3: Contador puntual rapido (Atomic Increment)
-    clave_contador = "contador:visitas:aula_virtual"
-    r.set(clave_contador, "150")
-    r.incrby(clave_contador, 12)
-
-    # Caso 4: Ranking en tiempo real de estudiantes (Sorted Set - ZSET)
-    r.delete("ranking:estudiantes:top")
-    r.zadd("ranking:estudiantes:top", {
-        "Ana Gomez": 985.0,
-        "Carlos Silva": 950.0,
-        "Sofia Lopez": 920.0,
-        "Mateo Rivas": 890.0
+    # 4. SORTED SET (ZSET): Probabilidad de sospechosos segun el Detective L
+    clave_sospechosos = "cuartel_l:probabilidad_ser_kira"
+    r.delete(clave_sospechosos)
+    r.zadd(clave_sospechosos, {
+        "Light Yagami": 96.8,
+        "Misa Amane (Segunda Kira)": 88.5,
+        "Teru Mikami": 75.0,
+        "Kyosuke Higuchi (Yotsuba)": 62.4,
+        "Touta Matsuda (Detective)": 0.05
     })
 
-    # Caso 5: Cola de mensajes / notificaciones pendientes (List)
-    r.delete("cola:notificaciones")
-    r.rpush("cola:notificaciones", "Bienvenido al Laboratorio NoSQL", "Nueva tarea de Grafos publicada", "Servidores en linea")
+    # 5. LIST (COLA DE TAREAS): Manzanas favoritas para aplacar a Ryuk
+    clave_manzanas = "shinigami:ryuk:manzanas_pendientes"
+    r.delete(clave_manzanas)
+    r.rpush(clave_manzanas, "Manzana roja de la region de Nagano", "Manzana verde acida Fuji", "Tarta dulce de manzana")
 
-    console.print("[green][OK] Claves de diferentes tipos guardadas en memoria RAM (Hashes, Strings, ZSet, List).[/]")
+    console.print("[green][OK] Claves de Death Note sembradas en memoria RAM (Hashes con TTL 40s, Strings, ZSet, List).[/]")
 
-    # Demostracion de lecturas directas puntuales:
-    sesion_recuperada = r.hgetall(token_ayudante)
-    ttl_restante = r.ttl(token_ayudante)
-    estado_mantenimiento = r.get("config:sistema:mantenimiento")
-    total_visitas = r.get(clave_contador)
-    top_ranking = r.zrevrange("ranking:estudiantes:top", 0, 2, withscores=True)
+    # Lectura puntual en O(1)
+    victima_recuperada = r.hgetall(clave_victima)
+    ttl_restante = r.ttl(clave_victima)
+    regla_01 = r.get("deathnote:regla:01")
+    total_eliminados = r.get(clave_contador)
+    top_sospechosos = r.zrevrange(clave_sospechosos, 0, 2, withscores=True)
 
-    arbol = Tree("[bold cyan]Redis: Recuperacion Puntual Directa por Clave[/]")
+    arbol = Tree("[bold red]Redis: Recuperacion Puntual Directa por Clave (Death Note)[/]")
 
-    nodo_sesion = arbol.add(f"[bold yellow]1. Hash puntual '{token_ayudante}' - Ayudante de Catedra (TTL: {ttl_restante}s)[/]")
-    for k, v in sesion_recuperada.items():
-        nodo_sesion.add(f"[dim]{k}:[/] [white]{v}[/]")
+    nodo_victima = arbol.add(f"[bold yellow]1. Hash Puntual '{clave_victima}' [bold red](TTL: {ttl_restante}s restantes)[/]")
+    for k, v in victima_recuperada.items():
+        nodo_victima.add(f"[dim]{k}:[/] [white]{v}[/]")
 
-    arbol.add(f"[bold yellow]2. String puntual 'config:sistema:mantenimiento':[/] [bold green]{estado_mantenimiento}[/] (Verifica flags del sistema al vuelo)")
-    arbol.add(f"[bold yellow]3. String contador '{clave_contador}':[/] [bold magenta]{total_visitas} visitas[/] (Contador atomico instantaneo)")
+    arbol.add(f"[bold yellow]2. String Puntual 'deathnote:regla:01':[/] [italic cyan]\"{regla_01}\"[/]")
+    arbol.add(f"[bold yellow]3. Contador Atomico '{clave_contador}':[/] [bold green]{total_eliminados} criminales[/] (Incremento instantaneo)")
 
-    nodo_rank = arbol.add("[bold yellow]4. Sorted Set 'ranking:estudiantes:top' (Top 3):[/]")
-    for pos, (nombre, puntaje) in enumerate(top_ranking, start=1):
-        nodo_rank.add(f"#{pos} [white]{nombre}[/]: [bold cyan]{puntaje} pts[/]")
+    nodo_rank = arbol.add("[bold yellow]4. Sorted Set 'cuartel_l:probabilidad_ser_kira' (Top 3 de L):[/]")
+    for pos, (nombre, puntaje) in enumerate(top_sospechosos, start=1):
+        nodo_rank.add(f"#{pos} [bold white]{nombre}[/]: [bold magenta]{puntaje}% probabilidad[/]")
 
     console.print(arbol)
     r.close()
@@ -413,11 +417,12 @@ def demo_redis():
 
 # =============================================================================
 # 4. PARADIGMA DE GRAFOS: Neo4j
-# CONCEPTO CLAVE: "Mini Red Social" (100% Personas conectadas por Amistad, Likes y Seguimiento)
+# CONCEPTO CLAVE: "Mini Red Social / Multiverso de Relaciones Directas"
+# EJEMPLO: Rick y Morty - Nodos de Personajes y Conexiones Interdimensionales
 # =============================================================================
 def demo_neo4j():
     console.rule("[bold blue]4. PARADIGMA DE GRAFOS - Neo4j[/]")
-    console.print("[italic white]Concepto: Mini Red Social de Personas: Nodos (:Persona) conectados por Amistad, Likes y Seguidores.[/]\n")
+    console.print("[italic white]Concepto: Red de entidades interconectadas. La propiedad 'name' define el nodo para visualizacion en Neo4j Browser.[/]\n")
 
     cfg = CONFIG["neo4j"]
 
@@ -431,110 +436,94 @@ def demo_neo4j():
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
 
-        # Sembrado de la Mini Red Social
-        # La propiedad 'name' es la que Neo4j Browser muestra siempre por defecto en el centro de cada nodo
+        # Sembrado de Rick y Morty
+        # REGLA CRITICA: La primera propiedad es 'name' para que el visor de Neo4j Browser centre el nombre del personaje
         cypher_seed = """
-        // 1. Nodos de Personas (solo personas con 'name' como primer atributo)
-        CREATE (valeria:Persona {name: 'Valeria', nombre_completo: 'Dra. Valeria Ramos', rol: 'Profesora Titular'})
-        CREATE (marcos:Persona {name: 'Marcos', nombre_completo: 'Marcos Gurruchaga', rol: 'Ayudante de Catedra'})
-        CREATE (ana:Persona {name: 'Ana', nombre_completo: 'Ana Gomez', rol: 'Estudiante Cloud'})
-        CREATE (carlos:Persona {name: 'Carlos', nombre_completo: 'Carlos Silva', rol: 'Estudiante Backend'})
-        CREATE (sofia:Persona {name: 'Sofia', nombre_completo: 'Sofia Lopez', rol: 'Estudiante Datos'})
-        CREATE (mateo:Persona {name: 'Mateo', nombre_completo: 'Mateo Rivas', rol: 'Estudiante Frontend'})
-        CREATE (lucas:Persona {name: 'Lucas', nombre_completo: 'Lucas Martinez', rol: 'Estudiante DevOps'})
+        // 1. Nodos de Personajes
+        CREATE (rick:Personaje {name: 'Rick Sanchez', dimension: 'C-137', especie: 'Humano / Genio', estado: 'Ebrio'})
+        CREATE (morty:Personaje {name: 'Morty Smith', dimension: 'C-137', especie: 'Humano', rol: 'Nieto Acompanante'})
+        CREATE (summer:Personaje {name: 'Summer Smith', dimension: 'C-137', especie: 'Humana', rol: 'Hermana Mayor Rebelde'})
+        CREATE (jerry:Personaje {name: 'Jerry Smith', dimension: 'C-137', especie: 'Humano', ocupacion: 'Desempleado'})
+        CREATE (beth:Personaje {name: 'Beth Smith', dimension: 'C-137', especie: 'Humana', ocupacion: 'Cirujana de Caballos'})
+        CREATE (birdperson:Personaje {name: 'Hombre Pajaro', dimension: 'C-137', especie: 'Pajaro Humanoide', rol: 'Mejor Amigo Guerrero'})
+        CREATE (evil_morty:Personaje {name: 'Evil Morty', dimension: 'Desconocida', especie: 'Humano', rol: 'Presidente de la Ciudadela'})
+        CREATE (meeseeks:Personaje {name: 'Mr Meeseeks', dimension: 'Caja Meeseeks', especie: 'Entidad Temporal', proposito: 'Bajar 2 golpes de golf'})
 
-        // 2. Relaciones Academicas y de Amistad Mutua (:AMIGO_DE, :COLABORA_CON)
-        CREATE (marcos)-[:COLABORA_CON]->(valeria)
-        CREATE (valeria)-[:AMIGO_DE]->(marcos)
-        CREATE (marcos)-[:AMIGO_DE]->(valeria)
+        // 2. Relaciones Familiares y de Aventura
+        CREATE (rick)-[:VIAJA_CON {portales_abiertos: 450}]->(morty)
+        CREATE (morty)-[:VIAJA_CON]->(rick)
+        CREATE (morty)-[:HERMANO_DE]->(summer)
+        CREATE (summer)-[:HERMANO_DE]->(morty)
+        CREATE (summer)-[:SIGUE_AVENTURAS_DE]->(rick)
+        CREATE (beth)-[:CASADA_CON]->(jerry)
+        CREATE (jerry)-[:CASADO_CON]->(beth)
 
-        CREATE (marcos)-[:AMIGO_DE]->(ana)
-        CREATE (ana)-[:AMIGO_DE]->(marcos)
+        // 3. Amistades y Alianzas Fuertes
+        CREATE (rick)-[:AMIGO_DE {nivel_lealtad: 'Extremo'}]->(birdperson)
+        CREATE (birdperson)-[:AMIGO_DE]->(rick)
 
-        CREATE (ana)-[:AMIGO_DE]->(carlos)
-        CREATE (carlos)-[:AMIGO_DE]->(ana)
+        // 4. Invocacion y Tragedia Existencial de Mr Meeseeks
+        CREATE (rick)-[:INVOCO_A]->(meeseeks)
+        CREATE (jerry)-[:PIDIO_AYUDA_A]->(meeseeks)
+        CREATE (meeseeks)-[:QUIERE_ELIMINAR_A {motivo: 'Existir es dolor para un Meeseeks'}]->(jerry)
 
-        CREATE (carlos)-[:AMIGO_DE]->(sofia)
-        CREATE (sofia)-[:AMIGO_DE]->(carlos)
-
-        CREATE (mateo)-[:AMIGO_DE]->(lucas)
-        CREATE (lucas)-[:AMIGO_DE]->(mateo)
-
-        // 3. Relaciones de Seguimiento (:SIGUE_A)
-        // Los alumnos siguen al ayudante de catedra para novedades
-        CREATE (carlos)-[:SIGUE_A]->(marcos)
-        CREATE (sofia)-[:SIGUE_A]->(marcos)
-        CREATE (mateo)-[:SIGUE_A]->(marcos)
-        CREATE (lucas)-[:SIGUE_A]->(marcos)
-        CREATE (marcos)-[:SIGUE_A]->(valeria)
-
-        // 4. Interacciones Directas de Likes entre personas (:LE_GUSTA)
-        CREATE (carlos)-[:LE_GUSTA]->(ana)
-        CREATE (ana)-[:LE_GUSTA]->(marcos)
-        CREATE (valeria)-[:LE_GUSTA]->(marcos)
-        CREATE (marcos)-[:LE_GUSTA]->(valeria)
-        CREATE (sofia)-[:LE_GUSTA]->(carlos)
-        CREATE (marcos)-[:LE_GUSTA]->(ana)
-        CREATE (lucas)-[:LE_GUSTA]->(mateo)
-
-        // 5. Relaciones de Estudio / Trabajo (:ESTUDIA_CON)
-        CREATE (ana)-[:ESTUDIA_CON]->(carlos)
-        CREATE (mateo)-[:ESTUDIA_CON]->(lucas)
+        // 5. Hostilidad, Desprecio y Enemistad
+        CREATE (rick)-[:DESPRECIA_A {motivo: 'Incompetencia cronica'}]->(jerry)
+        CREATE (jerry)-[:ODIA_A]->(rick)
+        CREATE (evil_morty)-[:ENEMIGO_MORTAL_DE]->(rick)
         """
         session.run(cypher_seed)
-        console.print("[green][OK] Mini Red Social construida: Nodos (:Persona) con propiedad 'name' y relaciones (:AMIGO_DE, :SIGUE_A, :LE_GUSTA, :ESTUDIA_CON).[/]\n")
+        console.print("[green][OK] Grafo de Rick y Morty sembrado: Nodos (:Personaje) con propiedad 'name' y relaciones enriquecidas.[/]\n")
 
-        # Consulta 1: Algoritmo de recomendacion social ("Amigos de mis amigos que aun no conozco")
-        query_amigos = """
-        MATCH (yo:Persona {name: 'Marcos'})-[:AMIGO_DE]->(amigo:Persona)-[:AMIGO_DE]->(amigo_de_amigo:Persona)
-        WHERE NOT (yo)-[:AMIGO_DE]->(amigo_de_amigo) AND yo <> amigo_de_amigo
-        RETURN 
-            amigo_de_amigo.name AS sugerencia,
-            amigo_de_amigo.rol AS rol,
-            amigo.name AS amigo_en_comun
+        # Consulta 1: Red de relaciones de Rick (Aliados, Companeros y Enemigos)
+        query_rick = """
+        MATCH (rick:Personaje {name: 'Rick Sanchez'})-[r]-(otro:Personaje)
+        RETURN otro.name AS personaje, type(r) AS relacion, otro.rol AS rol, otro.dimension AS dimension
+        ORDER BY relacion
         """
-        sugerencias = session.run(query_amigos).data()
+        relaciones_rick = session.run(query_rick).data()
 
-        tabla_sug = Table(title="Neo4j: Algoritmo de Sugerencia Social ('Amigos de mis amigos')", box=box.ROUNDED)
-        tabla_sug.add_column("Persona Sugerida", style="cyan")
-        tabla_sug.add_column("Rol / Especialidad", style="white")
-        tabla_sug.add_column("Amigo en Comun (Puente)", style="yellow")
+        tabla_rick = Table(title="Neo4j: Entorno de Relaciones Directas de Rick Sanchez (C-137)", box=box.ROUNDED)
+        tabla_rick.add_column("Personaje Conectado", style="cyan")
+        tabla_rick.add_column("Tipo de Relacion", style="magenta")
+        tabla_rick.add_column("Rol / Descripcion", style="yellow")
+        tabla_rick.add_column("Dimension", style="white")
 
-        for r in sugerencias:
-            tabla_sug.add_row(r["sugerencia"], r["rol"], r["amigo_en_comun"])
+        for r in relaciones_rick:
+            tabla_rick.add_row(r["personaje"], r["relacion"], str(r.get("rol", "-")), r["dimension"])
 
-        console.print(tabla_sug)
+        console.print(tabla_rick)
 
-        # Consulta 2: Interacciones de Likes entre personas (:LE_GUSTA)
-        query_likes = """
-        MATCH (origen:Persona)-[:LE_GUSTA]->(destino:Persona)
-        RETURN origen.name AS dio_like, destino.name AS le_gusta_perfil_de, destino.rol AS rol
-        ORDER BY dio_like
+        # Consulta 2: Conflicto - ¿Por que Mr Meeseeks quiere eliminar a Jerry?
+        query_meeseeks = """
+        MATCH (m:Personaje {name: 'Mr Meeseeks'})-[r:QUIERE_ELIMINAR_A]->(j:Personaje {name: 'Jerry Smith'})
+        RETURN m.name AS agresor, type(r) AS accion, j.name AS victima, r.motivo AS causa_filosofica
         """
-        likes = session.run(query_likes).data()
+        conflicto = session.run(query_meeseeks).data()
 
-        tabla_likes = Table(title="Neo4j: Interacciones de Likes entre Personas (:LE_GUSTA)", box=box.ROUNDED)
-        tabla_likes.add_column("Persona (Dio Like)", style="magenta")
-        tabla_likes.add_column("-> Le gusta el perfil de ->", style="cyan")
-        tabla_likes.add_column("Rol de la Persona", style="yellow")
+        tabla_conflicto = Table(title="Neo4j: Traversal de Conflicto Existencial", box=box.ROUNDED)
+        tabla_conflicto.add_column("Agresor", style="bold red")
+        tabla_conflicto.add_column("Accion", style="yellow")
+        tabla_conflicto.add_column("Objetivo", style="bold cyan")
+        tabla_conflicto.add_column("Motivo del Traversal", style="white")
 
-        for l in likes:
-            tabla_likes.add_row(l["dio_like"], l["le_gusta_perfil_de"], l["rol"])
+        for c in conflicto:
+            tabla_conflicto.add_row(c["agresor"], c["accion"], c["victima"], c["causa_filosofica"])
 
-        console.print(tabla_likes)
+        console.print(tabla_conflicto)
 
     driver.close()
     return True
 
 
 # =============================================================================
-# 5. PARADIGMA COLUMNAR / SERIES TEMPORALES: InfluxDB (Analitica masiva)
-# CONCEPTO CLAVE: "Muchos datos para analizar" (Analitica vectorial estilo BigQuery)
-# En lugar de leer fila por fila, agrupa y calcula estadisticas sobre columnas de metricas
+# 5. PARADIGMA DE SERIES TEMPORALES: InfluxDB
+# CONCEPTO CLAVE: Ingesta masiva continua y analitica temporal en tiempo real
+# EJEMPLO: Harry Potter - Sensores Magicos en Hogwarts (Gryffindor vs Slytherin)
 # =============================================================================
 def demo_influxdb():
-    console.rule("[bold magenta]5. SERIES TEMPORALES / ENFOQUE COLUMNAR - InfluxDB 2.x[/]")
-    console.print("[italic white]Concepto: Procesamiento de grandes volumenes de datos para analitica y agregaciones masivas en tiempo real.[/]\n")
+    console.rule("[bold magenta]5. SERIES TEMPORALES - InfluxDB 2.x[/]")
+    console.print("[italic white]Concepto: Telemetria continua por estampas de tiempo (Time-Series) optimizada para agregaciones analiticas.[/]\n")
 
     cfg = CONFIG["influxdb"]
 
@@ -547,7 +536,7 @@ def demo_influxdb():
 
     client = retry_connection(connect, "InfluxDB")
     
-    # Limpiar datos previos para que el Data Explorer se vea perfecto y sin lineas duplicadas
+    # Limpiar datos previos para visualizacion limpia en InfluxDB Data Explorer
     try:
         del_api = client.delete_api()
         del_api.delete(
@@ -562,90 +551,248 @@ def demo_influxdb():
 
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
-    # Inyeccion masiva de telemetria analitica con patrones claramente diferenciados
-    import math
+    # Inyeccion de 30 puntos espaciados cada 3 minutos para dos ubicaciones magicas de Hogwarts
     ahora = datetime.now(timezone.utc)
     puntos = []
-
-    # 30 puntos espaciados cada 3 minutos (cubre la ultima hora y media)
     total_puntos = 30
+
     for i in range(total_puntos):
         t = ahora - timedelta(minutes=(total_puntos - 1 - i) * 3)
 
         # ---------------------------------------------------------------------
-        # Servidor 01: Servidor Web / API de Usuarios
-        # Comportamiento: Ondas suaves de trafico organico con subidas y bajadas
+        # 1. Torre de Gryffindor:
+        # Actividad del Ejercito de Dumbledore practicando encantamientos clandestinos.
+        # Patron: Hechizos crecientes con picos oscilantes y buena energia luminosa.
         # ---------------------------------------------------------------------
-        cpu_01 = round(42.0 + 26.0 * math.sin(i / 4.0) + ((i % 3) * 1.5), 1)
-        mem_01 = round(54.0 + 9.0 * math.sin(i / 5.5) + ((i % 2) * 1.2), 1)
-        req_01 = int(2800 + 1400 * math.sin(i / 4.0) + (i * 20))
+        hechizos_gryff = int(45 + 30 * math.sin(i / 3.5) + (i * 1.8))
+        lumos_lux = round(80.0 + 15.0 * math.cos(i / 4.0), 1)
+        dementores_gryff = round(max(0.0, 5.0 + 3.0 * math.sin(i / 2.0)), 1)
 
         puntos.append(
-            Point("metricas_servidores")
-            .tag("host", "srv-prod-latam-01")
-            .tag("datacenter", "dc-buenos-aires")
-            .tag("tipo_servidor", "api-gateway")
-            .field("cpu_utilizada_pct", max(15.0, min(95.0, cpu_01)))
-            .field("memoria_utilizada_pct", max(20.0, min(95.0, mem_01)))
-            .field("peticiones_por_seg", req_01)
+            Point("telemetria_hogwarts")
+            .tag("ubicacion", "Torre-Gryffindor")
+            .tag("castillo", "Hogwarts")
+            .tag("sensor_magico", "Grimorio-Analitico-Gryffindor")
+            .field("hechizos_por_minuto", max(10, hechizos_gryff))
+            .field("energia_lumos_lux", lumos_lux)
+            .field("presencia_dementores_pct", dementores_gryff)
             .time(t, WritePrecision.NS)
         )
 
         # ---------------------------------------------------------------------
-        # Servidor 02: Servidor de Tareas en Segundo Plano / Batch Worker
-        # Comportamiento: Base baja (20%), rastro abrupto de carga pesada (88%)
-        # entre los puntos 10 y 20, y luego recuperacion
+        # 2. Mazmorras de Slytherin:
+        # Actividad controlada de pociones, pero con una incursion abrupta de Dementores
+        # patrullando entre los puntos 12 y 22 (frio espectral alto y caida de Lumos).
         # ---------------------------------------------------------------------
-        if 10 <= i <= 21:
-            # Procesamiento batch en ejecucion
-            cpu_02 = round(82.0 + ((i % 5) * 2.3), 1)
-            mem_02 = round(68.0 + ((i - 10) * 1.8), 1)
-            req_02 = int(950 + ((i % 3) * 180))
+        if 12 <= i <= 22:
+            # Dementores merodeando los pasillos de las mazmorras
+            dementores_slyth = round(75.0 + ((i % 4) * 4.2), 1)
+            lumos_slyth = round(15.0 - ((i % 3) * 2.1), 1)
+            hechizos_slyth = int(120 + ((i % 5) * 15))  # Hechizos defensivos desesperados
         else:
-            # Reposo / Tareas livianas
-            cpu_02 = round(22.0 + ((i % 4) * 2.0), 1)
-            mem_02 = round(38.0 + ((i % 3) * 1.5), 1)
-            req_02 = int(320 + ((i % 2) * 60))
+            dementores_slyth = round(8.0 + ((i % 3) * 1.5), 1)
+            lumos_slyth = round(45.0 + ((i % 4) * 2.0), 1)
+            hechizos_slyth = int(25 + ((i % 3) * 8))
 
         puntos.append(
-            Point("metricas_servidores")
-            .tag("host", "srv-prod-latam-02")
-            .tag("datacenter", "dc-buenos-aires")
-            .tag("tipo_servidor", "batch-worker")
-            .field("cpu_utilizada_pct", max(10.0, min(98.0, cpu_02)))
-            .field("memoria_utilizada_pct", max(20.0, min(95.0, mem_02)))
-            .field("peticiones_por_seg", req_02)
+            Point("telemetria_hogwarts")
+            .tag("ubicacion", "Mazmorras-Slytherin")
+            .tag("castillo", "Hogwarts")
+            .tag("sensor_magico", "Grimorio-Analitico-Slytherin")
+            .field("hechizos_por_minuto", hechizos_slyth)
+            .field("energia_lumos_lux", max(5.0, lumos_slyth))
+            .field("presencia_dementores_pct", dementores_slyth)
             .time(t, WritePrecision.NS)
         )
 
     write_api.write(bucket=cfg["bucket"], org=cfg["org"], record=puntos)
-    console.print(f"[green][OK] Inyectados {len(puntos)} registros analiticos en '{cfg['bucket']}' (30 timestamps por host).[/]")
-    console.print("[dim]Nota visual: 'srv-prod-latam-01' muestra ondas de trafico web, 'srv-prod-latam-02' muestra picos de procesamiento batch.[/]\n")
+    console.print(f"[green][OK] Inyectados {len(puntos)} registros de telemetria magica en '{cfg['bucket']}' (Castillo de Hogwarts).[/]")
+    console.print("[dim]Nota visual: 'Torre-Gryffindor' muestra practica clandestina de hechizos; 'Mazmorras-Slytherin' muestra alerta por Dementores.[/]\n")
 
-    # Consulta FLUX analitica: Agregacion de columna (Tail + Filtro)
+    # Consulta FLUX analitica: Ultimos registros de presencia de Dementores
     query_api = client.query_api()
     flux_query = f"""
     from(bucket: "{cfg['bucket']}")
       |> range(start: -2h)
-      |> filter(fn: (r) => r["_measurement"] == "metricas_servidores")
-      |> filter(fn: (r) => r["_field"] == "cpu_utilizada_pct")
-      |> tail(n: 4)
+      |> filter(fn: (r) => r["_measurement"] == "telemetria_hogwarts")
+      |> filter(fn: (r) => r["_field"] == "presencia_dementores_pct")
+      |> tail(n: 3)
     """
     tablas = query_api.query(flux_query, org=cfg["org"])
 
-    tabla = Table(title="InfluxDB: Lectura Analitica Comparativa de CPU (Ultimos Registros)", box=box.ROUNDED)
+    tabla = Table(title="InfluxDB: Lectura Analitica de Presencia de Dementores en Hogwarts", box=box.ROUNDED)
     tabla.add_column("Hora (UTC)", style="white")
-    tabla.add_column("Host", style="cyan")
-    tabla.add_column("Metrica", style="yellow")
-    tabla.add_column("CPU Utilizada (%)", justify="right", style="bold green")
+    tabla.add_column("Ubicacion", style="bold cyan")
+    tabla.add_column("Sensor Magico", style="yellow")
+    tabla.add_column("Presencia Dementores (%)", justify="right", style="bold red")
 
     for tbl in tablas:
         for record in tbl.records:
             t_str = record.get_time().strftime("%H:%M:%S")
-            tabla.add_row(t_str, record.values.get("host", "N/A"), record.get_field(), f"{record.get_value():.2f}")
+            val = record.get_value()
+            estilo = "bold red" if val > 50 else "bold green"
+            tabla.add_row(t_str, record.values.get("ubicacion", "N/A"), record.values.get("sensor_magico", "N/A"), f"[{estilo}]{val:.1f}%[/]")
 
     console.print(tabla)
     client.close()
+    return True
+
+
+# =============================================================================
+# 6. PARADIGMA FAMILIAS DE COLUMNAS (WIDE-COLUMN): Apache Cassandra
+# CONCEPTO CLAVE: Big Data masivo de alta escritura (High-Write Throughput),
+# particionado horizontal sin Master (Partition Key) y orden fisico en disco (Clustering Key).
+# EJEMPLO: Fullmetal Alchemist / Ataque a los Titanes - Deteccion de Amenazas por Zona
+# =============================================================================
+def demo_cassandra():
+    console.rule("[bold yellow]6. FAMILIAS DE COLUMNAS (WIDE-COLUMN) - Apache Cassandra[/]")
+    console.print("[italic white]Concepto: Arquitectura descentralizada P2P, particionado distribuido (Partition Key) y ordenamiento fisico en disco (Clustering Key).[/]\n")
+
+    cfg = CONFIG["cassandra"]
+
+    def connect():
+        cluster = Cluster([cfg["host"]], port=cfg["port"])
+        session = cluster.connect()
+        return cluster, session
+
+    cluster, session = retry_connection(connect, "Cassandra")
+
+    # 1. Crear Keyspace (equivalente a Database en SQL)
+    session.execute(f"""
+        CREATE KEYSPACE IF NOT EXISTS {cfg['keyspace']}
+        WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}};
+    """)
+    session.set_keyspace(cfg["keyspace"])
+
+    # 2. Crear Tabla Columnar (Column Family)
+    # DISENO CLAVE EXPLICADO A LA CLASE:
+    # - PARTITION KEY: ((distrito)) -> Determina mediante hash (Murmur3Partitioner) que nodo del cluster almacena el registro.
+    # - CLUSTERING KEY: fecha_registro DESC -> Guarda las filas FISICAMENTE ORDENADAS en disco (SSTable) por timestamp descendente.
+    # - MAP<text, text>: Columnas dinamicas y sparse sin desperdiciar almacenamiento en NULLs.
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS avistamientos_amenazas (
+            distrito text,
+            fecha_registro timestamp,
+            id_avistamiento uuid,
+            tipo_amenaza text,
+            tamano_estimado_metros double,
+            cantidad_avistada int,
+            nivel_peligro text,
+            alquimista_o_comandante text,
+            detalles_tacticos map<text, text>,
+            PRIMARY KEY ((distrito), fecha_registro, id_avistamiento)
+        ) WITH CLUSTERING ORDER BY (fecha_registro DESC);
+    """)
+
+    # Limpiar datos previos de la tabla para ejecucion limpia
+    session.execute("TRUNCATE avistamientos_amenazas;")
+
+    # 3. Inyeccion Masiva de Eventos de Amenazas (Fullmetal Alchemist / Ataque a los Titanes)
+    ahora = datetime.now(timezone.utc)
+    insert_stmt = session.prepare("""
+        INSERT INTO avistamientos_amenazas (
+            distrito, fecha_registro, id_avistamiento, tipo_amenaza,
+            tamano_estimado_metros, cantidad_avistada, nivel_peligro,
+            alquimista_o_comandante, detalles_tacticos
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    """)
+
+    amenazas = [
+        # Distrito Shiganshina (Frontera sur - Muro Maria)
+        (
+            "Distrito Shiganshina", ahora - timedelta(minutes=45), uuid.uuid4(),
+            "Titan Colosal", 60.0, 1, "APOCALIPTICO",
+            "Capitan Levi Ackerman",
+            {"vulnerabilidad": "Nuca posterior", "clima": "Tormenta de Vapor", "orden": "Evacuacion inmediata de civiles"}
+        ),
+        (
+            "Distrito Shiganshina", ahora - timedelta(minutes=30), uuid.uuid4(),
+            "Titan Acorazado", 15.0, 1, "EXTREMO",
+            "Comandante Erwin Smith",
+            {"vulnerabilidad": "Articulaciones descubiertas", "resistencia": "Placas de blindaje oseo endurecido"}
+        ),
+        (
+            "Distrito Shiganshina", ahora - timedelta(minutes=10), uuid.uuid4(),
+            "Horda de Titanes Puros", 14.0, 8, "ALTO",
+            "Edward Elric (Alquimista de Acero)",
+            {"tactica": "Creacion de trincheras y lanzas de piedra transmutada"}
+        ),
+
+        # Distrito Central Amestris (Cuartel General del Este / Central)
+        (
+            "Distrito Central Amestris", ahora - timedelta(minutes=50), uuid.uuid4(),
+            "Homunculo (Envy)", 2.5, 1, "CRITICO",
+            "Coronel Roy Mustang (Alquimista de Fuego)",
+            {"habilidad": "Transmutacion de forma humana", "contramedida": "Ignicion masiva con guantes de chispa"}
+        ),
+        (
+            "Distrito Central Amestris", ahora - timedelta(minutes=20), uuid.uuid4(),
+            "Quimera Transmutada Quimica", 3.8, 3, "ALTO",
+            "Alphonse Elric",
+            {"observacion": "Fusion de leon con reptil", "estado": "Contenidas con alquimia defensiva"}
+        ),
+
+        # Distrito Trost (Muro Rose)
+        (
+            "Distrito Trost", ahora - timedelta(minutes=15), uuid.uuid4(),
+            "Titan Anomalico Saltaril", 12.0, 2, "CRITICO",
+            "Mikasa Ackerman",
+            {"velocidad": "Impredecible", "equipo": "Maniobras tridimensionales de alta velocidad"}
+        )
+    ]
+
+    for a in amenazas:
+        session.execute(insert_stmt, a)
+
+    console.print(f"[green][OK] Keyspace '{cfg['keyspace']}' y Column Family 'avistamientos_amenazas' inicializados.[/]")
+    console.print(f"[green][OK] Inyectados {len(amenazas)} eventos de alta escritura con Partition Key y Clustering Key ordenadas en disco.[/]\n")
+
+    # 4. CONSULTA OPTIMA DE CASSANDRA: Busqueda por Partition Key exacta
+    # EXPLICACION CLAVE: Cassandra va directo al nodo responsable del 'Distrito Shiganshina' y lee secuencialmente
+    # en disco por fecha_registro descendente sin hacer full-table scan.
+    cql_shiganshina = """
+        SELECT distrito, fecha_registro, tipo_amenaza, tamano_estimado_metros,
+               cantidad_avistada, nivel_peligro, alquimista_o_comandante, detalles_tacticos
+        FROM avistamientos_amenazas
+        WHERE distrito = 'Distrito Shiganshina'
+        LIMIT 5;
+    """
+    filas_shiganshina = session.execute(cql_shiganshina)
+
+    tabla_cass = Table(title="Cassandra: Query Optima por Partition Key ('Distrito Shiganshina') ordenada por Clustering Key", box=box.ROUNDED)
+    tabla_cass.add_column("Fecha/Hora (Descendente)", style="white")
+    tabla_cass.add_column("Tipo Amenaza", style="bold red")
+    tabla_cass.add_column("Tamano (m)", justify="right", style="cyan")
+    tabla_cass.add_column("Cant", justify="center", style="yellow")
+    tabla_cass.add_column("Peligro", justify="center", style="bold magenta")
+    tabla_cass.add_column("Alquimista / Comandante", style="green")
+    tabla_cass.add_column("Detalles Wide-Column (Map)", style="dim white")
+
+    for f in filas_shiganshina:
+        f_hora = f.fecha_registro.strftime("%H:%M:%S")
+        detalles_str = ", ".join([f"{k}: {v}" for k, v in f.detalles_tacticos.items()]) if f.detalles_tacticos else "-"
+        tabla_cass.add_row(
+            f_hora, f.tipo_amenaza, f"{f.tamano_estimado_metros:.1f}m",
+            str(f.cantidad_avistada), f.nivel_peligro, f.alquimista_o_comandante,
+            detalles_str[:45] + ("..." if len(detalles_str) > 45 else "")
+        )
+
+    console.print(tabla_cass)
+
+    # 5. EXPLICACION PEDAGOGICA PARA LA CLASE: ¿Por que Cassandra es diferente a SQL?
+    panel_pedagogico = Panel(
+        "[bold cyan]¿Cual es el beneficio EXACTO de Apache Cassandra frente a Relacional y Mongo?[/]\n\n"
+        "[bold yellow]1. Arquitectura Sin Maestro (Masterless P2P):[/] No hay un nodo lider que sea cuello de botella.\n"
+        "[bold yellow]2. Escrituras Masivas Brutales (LSM-Tree):[/] Escribe en Memtable (RAM) y CommitLog secuencial en milisegundos sin locks.\n"
+        "[bold yellow]3. Partition Key:[/] 'distrito' distribuye los petabytes de datos entre decenas de servidores.\n"
+        "[bold yellow]4. Clustering Key:[/] 'fecha_registro DESC' almacena las filas en orden fisico en disco. Buscar por distrito y rango de fechas es un Seek O(1).\n"
+        "[bold red]5. Regla de Oro:[/] No existe 'JOIN'. Las tablas se disenan segun las consultas exactas que hara la aplicacion.",
+        title="[bold green]Leccion Teorico-Practica: Column Families (Wide-Column)[/]",
+        border_style="yellow"
+    )
+    console.print(panel_pedagogico)
+
+    cluster.shutdown()
     return True
 
 
@@ -655,21 +802,23 @@ def demo_influxdb():
 def main():
     parser = argparse.ArgumentParser(description="Laboratorio Multi-Paradigma de Bases de Datos para Clases")
     parser.add_argument("--all", action="store_true", default=True, help="Ejecutar demostracion completa")
-    parser.add_argument("--engine", choices=["postgres", "mongodb", "redis", "neo4j", "influxdb"], help="Ejecutar solo un motor especifico")
+    parser.add_argument("--engine", choices=["postgres", "mongodb", "redis", "neo4j", "influxdb", "cassandra"], help="Ejecutar solo un motor especifico")
     args = parser.parse_args()
 
     console.print(Panel.fit(
         "[bold white on blue]  LABORATORIO PRACTICO DE BASES DE DATOS - CLASE EN VIVO  [/]\n"
-        "[italic cyan]Demostracion de los 5 Paradigmas Principales con Casos Reales[/]",
+        "[italic cyan]Demostracion de los 6 Paradigmas Principales con Casos Reales y Pop-Culture[/]\n"
+        "[dim]PostgreSQL (SQL) | MongoDB (Doc) | Redis (K-V) | Neo4j (Grafos) | InfluxDB (TS) | Cassandra (Wide-Column)[/]",
         border_style="cyan"
     ))
 
     motores = {
-        "postgres": ("1. Relacional (SQL) -> Tablas estructuradas e integridad ACID", demo_postgresql),
-        "mongodb": ("2. Documental (NoSQL) -> Objetos flexibles que mutan en el tiempo", demo_mongodb),
-        "redis": ("3. Clave-Valor -> Recuperacion puntual ultra-rapida O(1)", demo_redis),
-        "neo4j": ("4. Grafos -> Mini Red Social (Amigos, Likes y Recomendaciones)", demo_neo4j),
-        "influxdb": ("5. Series Temporales / Columnar -> Analitica de grandes volumenes de metricas", demo_influxdb)
+        "postgres": ("1. Relacional (SQL) -> Tablas estructuradas fijas e integridad ACID", demo_postgresql),
+        "mongodb": ("2. Documental (NoSQL) -> Schema Evolution / Los Simpsons", demo_mongodb),
+        "redis": ("3. Clave-Valor -> Acceso puntual O(1) con TTL / Death Note", demo_redis),
+        "neo4j": ("4. Grafos -> Red de relaciones interdimensionales / Rick y Morty", demo_neo4j),
+        "influxdb": ("5. Series Temporales -> Telemetria magica continua / Harry Potter", demo_influxdb),
+        "cassandra": ("6. Familias de Columnas -> Big Data masivo / Fullmetal Alchemist & Titanes", demo_cassandra)
     }
 
     seleccionados = [args.engine] if args.engine else list(motores.keys())
@@ -681,10 +830,10 @@ def main():
             func()
             resumen[titulo] = "[bold green]EXITO (Sembrado y Consultado)[/]"
         except Exception as e:
-            resumen[titulo] = f"[bold red]ERROR ({type(e).__name__})[/]"
+            resumen[titulo] = f"[bold red]ERROR ({type(e).__name__}: {e})[/]"
 
     # Reporte final
-    tabla_reporte = Table(title="Resumen Final para la Clase", box=box.HEAVY_EDGE)
+    tabla_reporte = Table(title="Resumen Final para la Catedra", box=box.HEAVY_EDGE)
     tabla_reporte.add_column("Paradigma Demostrado", style="white")
     tabla_reporte.add_column("Estado", justify="center")
 
@@ -692,7 +841,7 @@ def main():
         tabla_reporte.add_row(tit, est)
 
     console.print("\n")
-    console.print(Panel(tabla_reporte, border_style="green", title="[bold green]Reporte de Estado[/]"))
+    console.print(Panel(tabla_reporte, border_style="green", title="[bold green]Reporte de Estado de los Motores[/]"))
 
 
 if __name__ == "__main__":

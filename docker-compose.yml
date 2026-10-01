@@ -164,6 +164,47 @@ services:
     networks:
       - db-lab-network
 
+  # =========================================================================
+  # 6. FAMILIAS DE COLUMNAS (WIDE-COLUMN): Apache Cassandra + Cassandra Web
+  # Caso de Uso: Big Data de Amenazas y Alquimia (Fullmetal Alchemist)
+  # =========================================================================
+  cassandra:
+    image: cassandra:4.1
+    container_name: lab-cassandra
+    restart: unless-stopped
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "Amestris-Defense-Cluster"
+      CASSANDRA_DC: "datacenter1"
+      CASSANDRA_RACK: "rack1"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+      MAX_HEAP_SIZE: "512M"
+      HEAP_NEWSIZE: "128M"
+    volumes:
+      - ./data/cassandra:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 25
+      start_period: 45s
+    networks:
+      - db-lab-network
+
+  cassandra-web:
+    image: dcagatay/cassandra-web:latest
+    container_name: lab-cassandra-web
+    restart: unless-stopped
+    ports:
+      - "8082:3000"
+    entrypoint: ["/bin/sh", "-c", "CASS_IP=$$(ping -c 1 cassandra | head -n 1 | cut -d '(' -f 2 | cut -d ')' -f 1); exec cassandra-web --hosts $$CASS_IP --port 9042"]
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    networks:
+      - db-lab-network
+
 networks:
   db-lab-network:
     driver: bridge
