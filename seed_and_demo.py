@@ -162,18 +162,19 @@ def demo_postgresql():
 
     # Sembrado representativo
     usuarios = [
-        ("Marcos Gurruchaga", "marcos@universidad.edu", "Profesor"),
+        ("Dra. Valeria Ramos", "valeria@universidad.edu", "Profesora Titular"),
+        ("Marcos Gurruchaga", "marcos@universidad.edu", "Ayudante de Catedra"),
         ("Ana Gomez", "ana@universidad.edu", "Estudiante"),
-        ("Carlos Silva", "carlos@universidad.edu", "Investigador")
+        ("Carlos Silva", "carlos@universidad.edu", "Estudiante")
     ]
     cursor.executemany("INSERT INTO usuarios (nombre, email, categoria) VALUES (%s, %s, %s);", usuarios)
 
     pedidos = [
-        (1, "Licencia Docker Pro", 60.00, "completado"),
-        (1, "Libro Diseno de Sistemas Distribuidos", 45.50, "completado"),
-        (2, "Curso Bases de Datos NoSQL", 25.00, "completado"),
-        (2, "Teclado Ergonomico", 110.00, "pendiente"),
-        (3, "Acceso a Cluster Cloud GPU", 250.00, "completado")
+        (1, "Suscripcion Cloud Educativa", 120.00, "completado"),
+        (2, "Licencia Docker Pro", 60.00, "completado"),
+        (2, "Libro Diseno de Sistemas Distribuidos", 45.50, "completado"),
+        (3, "Curso Bases de Datos NoSQL", 25.00, "completado"),
+        (4, "Teclado Ergonomico", 110.00, "pendiente")
     ]
     cursor.executemany("INSERT INTO pedidos (usuario_id, producto, precio, estado) VALUES (%s, %s, %s, %s);", pedidos)
     console.print(f"[green][OK] Creadas tablas DDL relacionales con integridad referencial (FK).[/]")
@@ -256,15 +257,17 @@ def demo_mongodb():
             },
             "activo": True
         },
-        # Generacion 3 (Version moderna: Suma suscripcion SaaS, preferencias dinamicas y metadatos):
+        # Generacion 3 (Version moderna: Suma suscripcion SaaS, cargo de ayudante y metadatos):
         {
             "version_schema": 3,
             "username": "mgurruchaga",
             "nombre": "Marcos Gurruchaga",
-            "email": "marcos@example.com",
+            "rol": "Ayudante de Catedra",
+            "materia": "Bases de Datos",
+            "email": "marcos@universidad.edu",
             "telefonos": ["+54 11 4444-7777"],
             "suscripcion": {
-                "plan": "Enterprise Cloud",
+                "plan": "Educativo Cloud Pro",
                 "auto_renovacion": True,
                 "limite_contenedores": 50
             },
@@ -327,15 +330,27 @@ def demo_redis():
     r = retry_connection(connect, "Redis")
 
     # Caso 1: Recuperacion puntual de Sesion de Usuario por Token (Hash + TTL)
-    token_profesor = "session:tok_9942"
-    r.hset(token_profesor, mapping={
+    token_ayudante = "session:tok_9942"
+    r.hset(token_ayudante, mapping={
         "usuario_id": "42",
         "username": "mgurruchaga",
-        "rol": "profesor_titular",
+        "rol": "ayudante_catedra",
+        "cargo": "Ayudante de Catedra",
         "email": "marcos@universidad.edu",
         "login_ip": "192.168.1.100"
     })
-    r.expire(token_profesor, 3600)  # Expira en 1 hora
+    r.expire(token_ayudante, 3600)  # Expira en 1 hora
+
+    token_titular = "session:tok_8800"
+    r.hset(token_titular, mapping={
+        "usuario_id": "1",
+        "username": "vramos",
+        "rol": "profesora_titular",
+        "cargo": "Profesora Titular",
+        "email": "valeria@universidad.edu",
+        "login_ip": "192.168.1.10"
+    })
+    r.expire(token_titular, 3600)
 
     token_alumna = "session:tok_1050"
     r.hset(token_alumna, mapping={
@@ -356,13 +371,13 @@ def demo_redis():
     r.set(clave_contador, "150")
     r.incrby(clave_contador, 12)
 
-    # Caso 4: Ranking en tiempo real (Sorted Set - ZSET)
+    # Caso 4: Ranking en tiempo real de estudiantes (Sorted Set - ZSET)
     r.delete("ranking:estudiantes:top")
     r.zadd("ranking:estudiantes:top", {
-        "Marcos Gurruchaga": 995.0,
-        "Ana Gomez": 960.0,
-        "Carlos Silva": 920.0,
-        "Sofia Lopez": 890.0
+        "Ana Gomez": 985.0,
+        "Carlos Silva": 950.0,
+        "Sofia Lopez": 920.0,
+        "Mateo Rivas": 890.0
     })
 
     # Caso 5: Cola de mensajes / notificaciones pendientes (List)
@@ -372,15 +387,15 @@ def demo_redis():
     console.print("[green][OK] Claves de diferentes tipos guardadas en memoria RAM (Hashes, Strings, ZSet, List).[/]")
 
     # Demostracion de lecturas directas puntuales:
-    sesion_recuperada = r.hgetall(token_profesor)
-    ttl_restante = r.ttl(token_profesor)
+    sesion_recuperada = r.hgetall(token_ayudante)
+    ttl_restante = r.ttl(token_ayudante)
     estado_mantenimiento = r.get("config:sistema:mantenimiento")
     total_visitas = r.get(clave_contador)
     top_ranking = r.zrevrange("ranking:estudiantes:top", 0, 2, withscores=True)
 
     arbol = Tree("[bold cyan]Redis: Recuperacion Puntual Directa por Clave[/]")
 
-    nodo_sesion = arbol.add(f"[bold yellow]1. Hash puntual '{token_profesor}' (TTL: {ttl_restante}s)[/]")
+    nodo_sesion = arbol.add(f"[bold yellow]1. Hash puntual '{token_ayudante}' - Ayudante de Catedra (TTL: {ttl_restante}s)[/]")
     for k, v in sesion_recuperada.items():
         nodo_sesion.add(f"[dim]{k}:[/] [white]{v}[/]")
 
@@ -420,14 +435,19 @@ def demo_neo4j():
         # La propiedad 'name' es la que Neo4j Browser muestra siempre por defecto en el centro de cada nodo
         cypher_seed = """
         // 1. Nodos de Personas (solo personas con 'name' como primer atributo)
-        CREATE (marcos:Persona {name: 'Marcos', nombre_completo: 'Marcos Gurruchaga', rol: 'Profesor DevOps'})
+        CREATE (valeria:Persona {name: 'Valeria', nombre_completo: 'Dra. Valeria Ramos', rol: 'Profesora Titular'})
+        CREATE (marcos:Persona {name: 'Marcos', nombre_completo: 'Marcos Gurruchaga', rol: 'Ayudante de Catedra'})
         CREATE (ana:Persona {name: 'Ana', nombre_completo: 'Ana Gomez', rol: 'Estudiante Cloud'})
-        CREATE (carlos:Persona {name: 'Carlos', nombre_completo: 'Carlos Silva', rol: 'Backend Developer'})
-        CREATE (sofia:Persona {name: 'Sofia', nombre_completo: 'Sofia Lopez', rol: 'Data Scientist'})
-        CREATE (mateo:Persona {name: 'Mateo', nombre_completo: 'Mateo Rivas', rol: 'Frontend Dev'})
-        CREATE (lucas:Persona {name: 'Lucas', nombre_completo: 'Lucas Martinez', rol: 'DevOps Engineer'})
+        CREATE (carlos:Persona {name: 'Carlos', nombre_completo: 'Carlos Silva', rol: 'Estudiante Backend'})
+        CREATE (sofia:Persona {name: 'Sofia', nombre_completo: 'Sofia Lopez', rol: 'Estudiante Datos'})
+        CREATE (mateo:Persona {name: 'Mateo', nombre_completo: 'Mateo Rivas', rol: 'Estudiante Frontend'})
+        CREATE (lucas:Persona {name: 'Lucas', nombre_completo: 'Lucas Martinez', rol: 'Estudiante DevOps'})
 
-        // 2. Relaciones de Amistad Mutua (:AMIGO_DE)
+        // 2. Relaciones Academicas y de Amistad Mutua (:AMIGO_DE, :COLABORA_CON)
+        CREATE (marcos)-[:COLABORA_CON]->(valeria)
+        CREATE (valeria)-[:AMIGO_DE]->(marcos)
+        CREATE (marcos)-[:AMIGO_DE]->(valeria)
+
         CREATE (marcos)-[:AMIGO_DE]->(ana)
         CREATE (ana)-[:AMIGO_DE]->(marcos)
 
@@ -441,14 +461,18 @@ def demo_neo4j():
         CREATE (lucas)-[:AMIGO_DE]->(mateo)
 
         // 3. Relaciones de Seguimiento (:SIGUE_A)
+        // Los alumnos siguen al ayudante de catedra para novedades
         CREATE (carlos)-[:SIGUE_A]->(marcos)
         CREATE (sofia)-[:SIGUE_A]->(marcos)
         CREATE (mateo)-[:SIGUE_A]->(marcos)
-        CREATE (lucas)-[:SIGUE_A]->(ana)
+        CREATE (lucas)-[:SIGUE_A]->(marcos)
+        CREATE (marcos)-[:SIGUE_A]->(valeria)
 
         // 4. Interacciones Directas de Likes entre personas (:LE_GUSTA)
         CREATE (carlos)-[:LE_GUSTA]->(ana)
         CREATE (ana)-[:LE_GUSTA]->(marcos)
+        CREATE (valeria)-[:LE_GUSTA]->(marcos)
+        CREATE (marcos)-[:LE_GUSTA]->(valeria)
         CREATE (sofia)-[:LE_GUSTA]->(carlos)
         CREATE (marcos)-[:LE_GUSTA]->(ana)
         CREATE (lucas)-[:LE_GUSTA]->(mateo)

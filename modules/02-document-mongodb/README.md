@@ -29,12 +29,11 @@ En MongoDB, **cada documento es polimorfico**: pueden convivir en la misma colec
   "_id": "66fb10a12e3...",
   "username": "mgurruchaga",
   "name": "Marcos Gurruchaga",
-  "role": "DevOps Engineer",
-  "skills": ["Docker", "Kubernetes", "Python", "Terraform", "PostgreSQL"],
-  "experience_years": 6,
+  "role": "Ayudante de Catedra & DevOps",
+  "skills": ["Docker", "Kubernetes", "Python", "Neo4j", "PostgreSQL"],
+  "experience_years": 4,
   "active_projects": [
-    { "name": "Infrastructure Modernization", "tier": "mission-critical", "cloud": "AWS" },
-    { "name": "NoSQL Database Lab", "tier": "internal", "cloud": "Hybrid" }
+    { "name": "Laboratorio Multi-Paradigma NoSQL", "tier": "educativo", "cloud": "Docker" }
   ],
   "settings": {
     "dark_mode": true,
