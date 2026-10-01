@@ -493,33 +493,81 @@ def demo_influxdb():
         return client
 
     client = retry_connection(connect, "InfluxDB")
+    
+    # Limpiar datos previos para que el Data Explorer se vea perfecto y sin lineas duplicadas
+    try:
+        del_api = client.delete_api()
+        del_api.delete(
+            start="1970-01-01T00:00:00Z",
+            stop=datetime.now(timezone.utc).isoformat(),
+            predicate="",
+            bucket=cfg["bucket"],
+            org=cfg["org"]
+        )
+    except Exception:
+        pass
+
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
-    # Inyeccion masiva de telemetria analitica (15 puntos temporales por host)
+    # Inyeccion masiva de telemetria analitica con patrones claramente diferenciados
+    import math
     ahora = datetime.now(timezone.utc)
     puntos = []
 
-    hosts = ["srv-prod-latam-01", "srv-prod-latam-02"]
-    for host in hosts:
-        for i in range(12):
-            t = ahora - timedelta(minutes=(12 - i) * 5)
-            cpu = round(25.0 + (i * 3.5) + (5 if "01" in host else 8), 2)
-            mem = round(45.0 + (i * 2.2), 2)
-            reqs = int(1200 + (i * 150))
+    # 30 puntos espaciados cada 3 minutos (cubre la ultima hora y media)
+    total_puntos = 30
+    for i in range(total_puntos):
+        t = ahora - timedelta(minutes=(total_puntos - 1 - i) * 3)
 
-            p = (
-                Point("metricas_servidores")
-                .tag("host", host)
-                .tag("datacenter", "dc-buenos-aires")
-                .field("cpu_utilizada_pct", cpu)
-                .field("memoria_utilizada_pct", mem)
-                .field("peticiones_por_seg", reqs)
-                .time(t, WritePrecision.NS)
-            )
-            puntos.append(p)
+        # ---------------------------------------------------------------------
+        # Servidor 01: Servidor Web / API de Usuarios
+        # Comportamiento: Ondas suaves de trafico organico con subidas y bajadas
+        # ---------------------------------------------------------------------
+        cpu_01 = round(42.0 + 26.0 * math.sin(i / 4.0) + ((i % 3) * 1.5), 1)
+        mem_01 = round(54.0 + 9.0 * math.sin(i / 5.5) + ((i % 2) * 1.2), 1)
+        req_01 = int(2800 + 1400 * math.sin(i / 4.0) + (i * 20))
+
+        puntos.append(
+            Point("metricas_servidores")
+            .tag("host", "srv-prod-latam-01")
+            .tag("datacenter", "dc-buenos-aires")
+            .tag("tipo_servidor", "api-gateway")
+            .field("cpu_utilizada_pct", max(15.0, min(95.0, cpu_01)))
+            .field("memoria_utilizada_pct", max(20.0, min(95.0, mem_01)))
+            .field("peticiones_por_seg", req_01)
+            .time(t, WritePrecision.NS)
+        )
+
+        # ---------------------------------------------------------------------
+        # Servidor 02: Servidor de Tareas en Segundo Plano / Batch Worker
+        # Comportamiento: Base baja (20%), rastro abrupto de carga pesada (88%)
+        # entre los puntos 10 y 20, y luego recuperacion
+        # ---------------------------------------------------------------------
+        if 10 <= i <= 21:
+            # Procesamiento batch en ejecucion
+            cpu_02 = round(82.0 + ((i % 5) * 2.3), 1)
+            mem_02 = round(68.0 + ((i - 10) * 1.8), 1)
+            req_02 = int(950 + ((i % 3) * 180))
+        else:
+            # Reposo / Tareas livianas
+            cpu_02 = round(22.0 + ((i % 4) * 2.0), 1)
+            mem_02 = round(38.0 + ((i % 3) * 1.5), 1)
+            req_02 = int(320 + ((i % 2) * 60))
+
+        puntos.append(
+            Point("metricas_servidores")
+            .tag("host", "srv-prod-latam-02")
+            .tag("datacenter", "dc-buenos-aires")
+            .tag("tipo_servidor", "batch-worker")
+            .field("cpu_utilizada_pct", max(10.0, min(98.0, cpu_02)))
+            .field("memoria_utilizada_pct", max(20.0, min(95.0, mem_02)))
+            .field("peticiones_por_seg", req_02)
+            .time(t, WritePrecision.NS)
+        )
 
     write_api.write(bucket=cfg["bucket"], org=cfg["org"], record=puntos)
-    console.print(f"[green][OK] Inyectados {len(puntos)} registros analiticos en el bucket '{cfg['bucket']}'.[/]\n")
+    console.print(f"[green][OK] Inyectados {len(puntos)} registros analiticos en '{cfg['bucket']}' (30 timestamps por host).[/]")
+    console.print("[dim]Nota visual: 'srv-prod-latam-01' muestra ondas de trafico web, 'srv-prod-latam-02' muestra picos de procesamiento batch.[/]\n")
 
     # Consulta FLUX analitica: Agregacion de columna (Tail + Filtro)
     query_api = client.query_api()
@@ -527,16 +575,16 @@ def demo_influxdb():
     from(bucket: "{cfg['bucket']}")
       |> range(start: -2h)
       |> filter(fn: (r) => r["_measurement"] == "metricas_servidores")
-      |> filter(fn: (r) => r["_field"] == "cpu_utilizada_pct" or r["_field"] == "peticiones_por_seg")
-      |> tail(n: 6)
+      |> filter(fn: (r) => r["_field"] == "cpu_utilizada_pct")
+      |> tail(n: 4)
     """
     tablas = query_api.query(flux_query, org=cfg["org"])
 
-    tabla = Table(title="InfluxDB: Lectura Analitica Columnar (Ultimos Registros Agregados)", box=box.ROUNDED)
+    tabla = Table(title="InfluxDB: Lectura Analitica Comparativa de CPU (Ultimos Registros)", box=box.ROUNDED)
     tabla.add_column("Hora (UTC)", style="white")
     tabla.add_column("Host", style="cyan")
-    tabla.add_column("Columna / Metrica", style="yellow")
-    tabla.add_column("Valor Analizado", justify="right", style="bold green")
+    tabla.add_column("Metrica", style="yellow")
+    tabla.add_column("CPU Utilizada (%)", justify="right", style="bold green")
 
     for tbl in tablas:
         for record in tbl.records:
