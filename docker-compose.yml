@@ -1,0 +1,168 @@
+services:
+  # =========================================================================
+  # 1. RELATIONAL (SQL): PostgreSQL + Adminer Web UI
+  # =========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: lab-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${POSTGRES_DB:-lab_sql}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lab_sql"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - db-lab-network
+
+  postgres-ui:
+    image: adminer:latest
+    container_name: lab-postgres-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - db-lab-network
+
+  # =========================================================================
+  # 2. DOCUMENT (NoSQL): MongoDB + Mongo Express Web UI
+  # =========================================================================
+  mongodb:
+    image: mongo:7.0
+    container_name: lab-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-mongo}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-mongopassword}
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - db-lab-network
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: lab-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USER:-mongo}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD:-mongopassword}
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - db-lab-network
+
+  # =========================================================================
+  # 3. KEY-VALUE: Redis + RedisInsight Web Dashboard
+  # =========================================================================
+  redis:
+    image: redis:7.4-alpine
+    container_name: lab-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "redispassword", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redispassword", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - db-lab-network
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: lab-redisinsight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    volumes:
+      - ./data/redisinsight:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - db-lab-network
+
+  # =========================================================================
+  # 4. GRAPH: Neo4j (Includes Native Web Browser UI on 7474)
+  # =========================================================================
+  neo4j:
+    image: neo4j:5.20-community
+    container_name: lab-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474" # Neo4j Browser UI (HTTP)
+      - "7687:7687" # Bolt protocol
+    environment:
+      NEO4J_AUTH: neo4j/neo4jpassword
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+    volumes:
+      - ./data/neo4j/data:/data
+      - ./data/neo4j/logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    networks:
+      - db-lab-network
+
+  # =========================================================================
+  # 5. TIME-SERIES: InfluxDB 2.x (Includes Native Web UI on 8086)
+  # =========================================================================
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: lab-influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086" # InfluxDB Web UI & API
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: influxadmin
+      DOCKER_INFLUXDB_INIT_PASSWORD: influxpassword123
+      DOCKER_INFLUXDB_INIT_ORG: devops-lab
+      DOCKER_INFLUXDB_INIT_BUCKET: telemetry-bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: lab-super-secret-admin-token-2026
+    volumes:
+      - ./data/influxdb/data:/var/lib/influxdb2
+      - ./data/influxdb/config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - db-lab-network
+
+networks:
+  db-lab-network:
+    driver: bridge

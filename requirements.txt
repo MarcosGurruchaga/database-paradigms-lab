@@ -1,0 +1,7 @@
+psycopg2-binary>=2.9.9
+pymongo>=4.11.0
+redis>=5.2.0
+neo4j>=5.28.0
+influxdb-client>=1.48.0
+rich>=13.9.0
+python-dotenv>=1.0.1
