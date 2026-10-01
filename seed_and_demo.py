@@ -327,40 +327,69 @@ def demo_redis():
     r = retry_connection(connect, "Redis")
 
     # Caso 1: Recuperacion puntual de Sesion de Usuario por Token (Hash + TTL)
-    token_sesion = "session:tok_9942"
-    r.hset(token_sesion, mapping={
+    token_profesor = "session:tok_9942"
+    r.hset(token_profesor, mapping={
         "usuario_id": "42",
         "username": "mgurruchaga",
         "rol": "profesor_titular",
+        "email": "marcos@universidad.edu",
         "login_ip": "192.168.1.100"
     })
-    r.expire(token_sesion, 1800)  # Expira en 30 minutos
+    r.expire(token_profesor, 3600)  # Expira en 1 hora
 
-    # Caso 2: Recuperacion puntual de Configuracion Global de la Plataforma
-    clave_config = "config:sistema:mantenimiento"
-    r.set(clave_config, "false")
+    token_alumna = "session:tok_1050"
+    r.hset(token_alumna, mapping={
+        "usuario_id": "50",
+        "username": "anagomez",
+        "rol": "estudiante",
+        "email": "ana@universidad.edu",
+        "login_ip": "192.168.1.105"
+    })
+    r.expire(token_alumna, 3600)
+
+    # Caso 2: Recuperacion puntual de Configuracion Global / Feature Flags
+    r.set("config:sistema:mantenimiento", "false")
+    r.set("config:feature_flags:modo_oscuro", "true")
 
     # Caso 3: Contador puntual rapido (Atomic Increment)
     clave_contador = "contador:visitas:aula_virtual"
     r.set(clave_contador, "150")
-    r.incrby(clave_contador, 5)
+    r.incrby(clave_contador, 12)
 
-    console.print("[green][OK] Claves puntuales guardadas en memoria RAM.[/]")
+    # Caso 4: Ranking en tiempo real (Sorted Set - ZSET)
+    r.delete("ranking:estudiantes:top")
+    r.zadd("ranking:estudiantes:top", {
+        "Marcos Gurruchaga": 995.0,
+        "Ana Gomez": 960.0,
+        "Carlos Silva": 920.0,
+        "Sofia Lopez": 890.0
+    })
+
+    # Caso 5: Cola de mensajes / notificaciones pendientes (List)
+    r.delete("cola:notificaciones")
+    r.rpush("cola:notificaciones", "Bienvenido al Laboratorio NoSQL", "Nueva tarea de Grafos publicada", "Servidores en linea")
+
+    console.print("[green][OK] Claves de diferentes tipos guardadas en memoria RAM (Hashes, Strings, ZSet, List).[/]")
 
     # Demostracion de lecturas directas puntuales:
-    sesion_recuperada = r.hgetall(token_sesion)
-    ttl_restante = r.ttl(token_sesion)
-    estado_mantenimiento = r.get(clave_config)
+    sesion_recuperada = r.hgetall(token_profesor)
+    ttl_restante = r.ttl(token_profesor)
+    estado_mantenimiento = r.get("config:sistema:mantenimiento")
     total_visitas = r.get(clave_contador)
+    top_ranking = r.zrevrange("ranking:estudiantes:top", 0, 2, withscores=True)
 
     arbol = Tree("[bold cyan]Redis: Recuperacion Puntual Directa por Clave[/]")
 
-    nodo_sesion = arbol.add(f"[bold yellow]1. Clave puntual '{token_sesion}' (TTL: {ttl_restante}s)[/]")
+    nodo_sesion = arbol.add(f"[bold yellow]1. Hash puntual '{token_profesor}' (TTL: {ttl_restante}s)[/]")
     for k, v in sesion_recuperada.items():
         nodo_sesion.add(f"[dim]{k}:[/] [white]{v}[/]")
 
-    arbol.add(f"[bold yellow]2. Clave puntual '{clave_config}':[/] [bold green]{estado_mantenimiento}[/] (Verifica flags del sistema al vuelo)")
-    arbol.add(f"[bold yellow]3. Clave puntual '{clave_contador}':[/] [bold magenta]{total_visitas} visitas[/] (Contador atomico instantaneo)")
+    arbol.add(f"[bold yellow]2. String puntual 'config:sistema:mantenimiento':[/] [bold green]{estado_mantenimiento}[/] (Verifica flags del sistema al vuelo)")
+    arbol.add(f"[bold yellow]3. String contador '{clave_contador}':[/] [bold magenta]{total_visitas} visitas[/] (Contador atomico instantaneo)")
+
+    nodo_rank = arbol.add("[bold yellow]4. Sorted Set 'ranking:estudiantes:top' (Top 3):[/]")
+    for pos, (nombre, puntaje) in enumerate(top_ranking, start=1):
+        nodo_rank.add(f"#{pos} [white]{nombre}[/]: [bold cyan]{puntaje} pts[/]")
 
     console.print(arbol)
     r.close()
