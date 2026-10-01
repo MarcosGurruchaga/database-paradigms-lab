@@ -369,12 +369,11 @@ def demo_redis():
 
 # =============================================================================
 # 4. PARADIGMA DE GRAFOS: Neo4j
-# CONCEPTO CLAVE: "Mini Red Social" (Nodos de personas, relaciones de amistad,
-# seguimiento y publicaciones, recomendando 'amigos de mis amigos')
+# CONCEPTO CLAVE: "Mini Red Social" (100% Personas conectadas por Amistad, Likes y Seguimiento)
 # =============================================================================
 def demo_neo4j():
     console.rule("[bold blue]4. PARADIGMA DE GRAFOS - Neo4j[/]")
-    console.print("[italic white]Concepto: Mini Red Social: Nodos de Usuarios y Publicaciones conectados por Amistad, Seguimiento y Likes.[/]\n")
+    console.print("[italic white]Concepto: Mini Red Social de Personas: Nodos (:Persona) conectados por Amistad, Likes y Seguidores.[/]\n")
 
     cfg = CONFIG["neo4j"]
 
@@ -389,18 +388,17 @@ def demo_neo4j():
         session.run("MATCH (n) DETACH DELETE n")
 
         # Sembrado de la Mini Red Social
-        # Marcos es amigo de Ana y sigue a Mateo.
-        # Ana es amiga de Carlos. (Por lo tanto, Carlos es "amigo de un amigo" de Marcos).
-        # Publicaciones con likes.
+        # La propiedad 'name' es la que Neo4j Browser muestra siempre por defecto en el centro de cada nodo
         cypher_seed = """
-        // 1. Nodos de Usuarios
-        CREATE (marcos:Usuario {nombre: 'Marcos Gurruchaga', profesion: 'DevOps & Profesor', ciudad: 'Buenos Aires'})
-        CREATE (ana:Usuario {nombre: 'Ana Gomez', profesion: 'Cloud Architect', ciudad: 'Cordoba'})
-        CREATE (carlos:Usuario {nombre: 'Carlos Silva', profesion: 'Backend Dev', ciudad: 'Rosario'})
-        CREATE (sofia:Usuario {nombre: 'Sofia Lopez', profesion: 'Data Scientist', ciudad: 'Mendoza'})
-        CREATE (mateo:Usuario {nombre: 'Mateo Rivas', profesion: 'Estudiante', ciudad: 'Buenos Aires'})
+        // 1. Nodos de Personas (solo personas con 'name' como primer atributo)
+        CREATE (marcos:Persona {name: 'Marcos', nombre_completo: 'Marcos Gurruchaga', rol: 'Profesor DevOps'})
+        CREATE (ana:Persona {name: 'Ana', nombre_completo: 'Ana Gomez', rol: 'Estudiante Cloud'})
+        CREATE (carlos:Persona {name: 'Carlos', nombre_completo: 'Carlos Silva', rol: 'Backend Developer'})
+        CREATE (sofia:Persona {name: 'Sofia', nombre_completo: 'Sofia Lopez', rol: 'Data Scientist'})
+        CREATE (mateo:Persona {name: 'Mateo', nombre_completo: 'Mateo Rivas', rol: 'Frontend Dev'})
+        CREATE (lucas:Persona {name: 'Lucas', nombre_completo: 'Lucas Martinez', rol: 'DevOps Engineer'})
 
-        // 2. Relaciones de Amistad y Seguimiento
+        // 2. Relaciones de Amistad Mutua (:AMIGO_DE)
         CREATE (marcos)-[:AMIGO_DE]->(ana)
         CREATE (ana)-[:AMIGO_DE]->(marcos)
 
@@ -410,62 +408,67 @@ def demo_neo4j():
         CREATE (carlos)-[:AMIGO_DE]->(sofia)
         CREATE (sofia)-[:AMIGO_DE]->(carlos)
 
-        CREATE (marcos)-[:SIGUE_A]->(mateo)
+        CREATE (mateo)-[:AMIGO_DE]->(lucas)
+        CREATE (lucas)-[:AMIGO_DE]->(mateo)
+
+        // 3. Relaciones de Seguimiento (:SIGUE_A)
+        CREATE (carlos)-[:SIGUE_A]->(marcos)
+        CREATE (sofia)-[:SIGUE_A]->(marcos)
         CREATE (mateo)-[:SIGUE_A]->(marcos)
+        CREATE (lucas)-[:SIGUE_A]->(ana)
 
-        // 3. Publicaciones
-        CREATE (post1:Publicacion {titulo: 'Laboratorio de Bases de Datos Docker', tema: 'DevOps'})
-        CREATE (post2:Publicacion {titulo: 'Introduccion a Grafos con Neo4j', tema: 'GraphDB'})
+        // 4. Interacciones Directas de Likes entre personas (:LE_GUSTA)
+        CREATE (carlos)-[:LE_GUSTA]->(ana)
+        CREATE (ana)-[:LE_GUSTA]->(marcos)
+        CREATE (sofia)-[:LE_GUSTA]->(carlos)
+        CREATE (marcos)-[:LE_GUSTA]->(ana)
+        CREATE (lucas)-[:LE_GUSTA]->(mateo)
 
-        CREATE (marcos)-[:PUBLICO]->(post1)
-        CREATE (sofia)-[:PUBLICO]->(post2)
-
-        // 4. Interacciones (Likes)
-        CREATE (ana)-[:LE_GUSTA]->(post1)
-        CREATE (carlos)-[:LE_GUSTA]->(post1)
-        CREATE (marcos)-[:LE_GUSTA]->(post2)
+        // 5. Relaciones de Estudio / Trabajo (:ESTUDIA_CON)
+        CREATE (ana)-[:ESTUDIA_CON]->(carlos)
+        CREATE (mateo)-[:ESTUDIA_CON]->(lucas)
         """
         session.run(cypher_seed)
-        console.print("[green][OK] Mini Red Social construida: Nodos (:Usuario, :Publicacion) y Aristas (:AMIGO_DE, :SIGUE_A, :LE_GUSTA).[/]\n")
+        console.print("[green][OK] Mini Red Social construida: Nodos (:Persona) con propiedad 'name' y relaciones (:AMIGO_DE, :SIGUE_A, :LE_GUSTA, :ESTUDIA_CON).[/]\n")
 
-        # Consulta 1: Algoritmo de recomendacion de amigos ("Amigos de mis amigos que aun no conozco")
-        # Quien es amigo de mis amigos con quien Marcos aun NO tiene amistad directa?
+        # Consulta 1: Algoritmo de recomendacion social ("Amigos de mis amigos que aun no conozco")
         query_amigos = """
-        MATCH (yo:Usuario {nombre: 'Marcos Gurruchaga'})-[:AMIGO_DE]->(amigo:Usuario)-[:AMIGO_DE]->(amigo_de_amigo:Usuario)
+        MATCH (yo:Persona {name: 'Marcos'})-[:AMIGO_DE]->(amigo:Persona)-[:AMIGO_DE]->(amigo_de_amigo:Persona)
         WHERE NOT (yo)-[:AMIGO_DE]->(amigo_de_amigo) AND yo <> amigo_de_amigo
         RETURN 
-            amigo_de_amigo.nombre AS sugerencia,
-            amigo_de_amigo.profesion AS profesion,
-            amigo.nombre AS amigo_en_comun
+            amigo_de_amigo.name AS sugerencia,
+            amigo_de_amigo.rol AS rol,
+            amigo.name AS amigo_en_comun
         """
         sugerencias = session.run(query_amigos).data()
 
         tabla_sug = Table(title="Neo4j: Algoritmo de Sugerencia Social ('Amigos de mis amigos')", box=box.ROUNDED)
-        tabla_sug.add_column("Usuario Recomendado", style="cyan")
-        tabla_sug.add_column("Profesion", style="white")
-        tabla_sug.add_column("Conectado a traves de (Amigo en Comun)", style="yellow")
+        tabla_sug.add_column("Persona Sugerida", style="cyan")
+        tabla_sug.add_column("Rol / Especialidad", style="white")
+        tabla_sug.add_column("Amigo en Comun (Puente)", style="yellow")
 
         for r in sugerencias:
-            tabla_sug.add_row(r["sugerencia"], r["profesion"], r["amigo_en_comun"])
+            tabla_sug.add_row(r["sugerencia"], r["rol"], r["amigo_en_comun"])
 
         console.print(tabla_sug)
 
-        # Consulta 2: Interacciones con posts
-        query_feed = """
-        MATCH (u:Usuario)-[:LE_GUSTA]->(p:Publicacion)<-[:PUBLICO]-(autor:Usuario)
-        RETURN p.titulo AS publicacion, autor.nombre AS autor, collect(u.nombre) AS personas_que_dieron_like
+        # Consulta 2: Interacciones de Likes entre personas (:LE_GUSTA)
+        query_likes = """
+        MATCH (origen:Persona)-[:LE_GUSTA]->(destino:Persona)
+        RETURN origen.name AS dio_like, destino.name AS le_gusta_perfil_de, destino.rol AS rol
+        ORDER BY dio_like
         """
-        feed = session.run(query_feed).data()
+        likes = session.run(query_likes).data()
 
-        tabla_feed = Table(title="Neo4j: Quien interactuo con cada Publicacion (Likes de la red)", box=box.ROUNDED)
-        tabla_feed.add_column("Publicacion", style="white")
-        tabla_feed.add_column("Autor", style="magenta")
-        tabla_feed.add_column("Likes recibidos de", style="green")
+        tabla_likes = Table(title="Neo4j: Interacciones de Likes entre Personas (:LE_GUSTA)", box=box.ROUNDED)
+        tabla_likes.add_column("Persona (Dio Like)", style="magenta")
+        tabla_likes.add_column("-> Le gusta el perfil de ->", style="cyan")
+        tabla_likes.add_column("Rol de la Persona", style="yellow")
 
-        for f in feed:
-            tabla_feed.add_row(f["publicacion"], f["autor"], ", ".join(f["personas_que_dieron_like"]))
+        for l in likes:
+            tabla_likes.add_row(l["dio_like"], l["le_gusta_perfil_de"], l["rol"])
 
-        console.print(tabla_feed)
+        console.print(tabla_likes)
 
     driver.close()
     return True
