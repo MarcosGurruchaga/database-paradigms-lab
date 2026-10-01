@@ -757,7 +757,7 @@ def demo_cassandra():
         WHERE distrito = 'Distrito Shiganshina'
         LIMIT 5;
     """
-    filas_shiganshina = session.execute(cql_shiganshina)
+    filas_shiganshina = list(session.execute(cql_shiganshina))
 
     tabla_cass = Table(title="Cassandra: Query Optima por Partition Key ('Distrito Shiganshina') ordenada por Clustering Key", box=box.ROUNDED)
     tabla_cass.add_column("Fecha/Hora (Descendente)", style="white")
@@ -779,7 +779,21 @@ def demo_cassandra():
 
     console.print(tabla_cass)
 
-    # 5. EXPLICACION PEDAGOGICA PARA LA CLASE: ¿Por que Cassandra es diferente a SQL?
+    # Visualizacion didactica de como se almacena la Familia de Columnas internamente
+    arbol_cf = Tree("[bold yellow]Visualizacion Interna: ¿Como almacena Cassandra la Familia de Columnas?[/]")
+    nodo_part = arbol_cf.add("[bold cyan]Partition Key (RowKey): 'Distrito Shiganshina'[/] [dim](Hash Murmur3 -> Determina el Nodo en el Cluster)[/]")
+    
+    for f in filas_shiganshina:
+        f_hora = f.fecha_registro.strftime("%H:%M:%S")
+        nodo_row = nodo_part.add(f"[bold magenta]Clustering Key ({f_hora})[/] -> [bold red]{f.tipo_amenaza}[/] ({f.tamano_estimado_metros}m)")
+        nodo_row.add(f"[dim]Columnas Fijas:[/] cantidad={f.cantidad_avistada}, nivel_peligro='{f.nivel_peligro}', comandante='{f.alquimista_o_comandante}'")
+        if f.detalles_tacticos:
+            nodo_cols = nodo_row.add("[bold green]Columnas Dinamicas (Wide-Columns / Sparse):[/]")
+            for k, v in f.detalles_tacticos.items():
+                nodo_cols.add(f"[yellow]{k}:[/] [white]'{v}'[/]")
+
+    console.print(arbol_cf)
+    console.print("")
     panel_pedagogico = Panel(
         "[bold cyan]¿Cual es el beneficio EXACTO de Apache Cassandra frente a Relacional y Mongo?[/]\n\n"
         "[bold yellow]1. Arquitectura Sin Maestro (Masterless P2P):[/] No hay un nodo lider que sea cuello de botella.\n"
