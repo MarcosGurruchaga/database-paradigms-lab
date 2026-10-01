@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    Script de Automatización PowerShell para el Laboratorio Multi-Paradigma de Bases de Datos.
+    Script de Automatizacion PowerShell para el Laboratorio Multi-Paradigma de Bases de Datos.
 .DESCRIPTION
-    Facilita el despliegue, verificación, sembrado de datos y apertura de dashboards.
+    Facilita el despliegue, verificacion, sembrado de datos y apertura de dashboards.
 .EXAMPLE
     .\run.ps1 up
     .\run.ps1 seed
@@ -26,17 +26,18 @@ function Show-Header {
 }
 
 function Show-Dashboards {
-    Write-Host "`n[+] Dashboards e Interfaces Web de Gestión:" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "[+] Dashboards e Interfaces Web de Gestion:" -ForegroundColor Green
     Write-Host "  1. PostgreSQL (Adminer UI):   http://localhost:8080" -ForegroundColor White
-    Write-Host "     - Servidor: postgres | Usuario: postgres | Contraseña: postgrespassword | Base: lab_sql" -ForegroundColor DarkGray
+    Write-Host "     - Servidor: postgres | Usuario: postgres | Clave: postgrespassword | Base: lab_sql" -ForegroundColor DarkGray
     Write-Host "  2. MongoDB (Mongo Express):   http://localhost:8081" -ForegroundColor White
-    Write-Host "     - Acceso directo sin autenticación básica para desarrollo local" -ForegroundColor DarkGray
+    Write-Host "     - Acceso directo sin autenticacion basica para desarrollo local" -ForegroundColor DarkGray
     Write-Host "  3. Redis (RedisInsight):      http://localhost:5540" -ForegroundColor White
     Write-Host "     - Host: redis o host.docker.internal | Puerto: 6379 | Password: redispassword" -ForegroundColor DarkGray
     Write-Host "  4. Neo4j (Neo4j Browser UI):  http://localhost:7474" -ForegroundColor White
-    Write-Host "     - Usuario: neo4j | Contraseña: neo4jpassword" -ForegroundColor DarkGray
+    Write-Host "     - Usuario: neo4j | Contrasena: neo4jpassword" -ForegroundColor DarkGray
     Write-Host "  5. InfluxDB (Influx Web UI):  http://localhost:8086" -ForegroundColor White
-    Write-Host "     - Usuario: influxadmin | Contraseña: influxpassword123 | Org: devops-lab" -ForegroundColor DarkGray
+    Write-Host "     - Usuario: influxadmin | Contrasena: influxpassword123 | Org: devops-lab" -ForegroundColor DarkGray
     Write-Host ""
 }
 
@@ -46,7 +47,8 @@ switch ($Action) {
     "up" {
         Write-Host "[*] Iniciando servicios de bases de datos y dashboards en segundo plano..." -ForegroundColor Cyan
         docker compose up -d
-        Write-Host "`n[✔] Contenedores desplegados. Esperando sincronización inicial (10s)..." -ForegroundColor Green
+        Write-Host ""
+        Write-Host "[OK] Contenedores desplegados. Esperando sincronizacion inicial (10s)..." -ForegroundColor Green
         Start-Sleep -Seconds 10
         docker compose ps
         Show-Dashboards
@@ -55,7 +57,7 @@ switch ($Action) {
     "down" {
         Write-Host "[*] Deteniendo todos los contenedores..." -ForegroundColor Yellow
         docker compose down
-        Write-Host "[✔] Contenedores detenidos correctamente." -ForegroundColor Green
+        Write-Host "[OK] Contenedores detenidos correctamente." -ForegroundColor Green
     }
 
     "restart" {
@@ -82,25 +84,25 @@ switch ($Action) {
 
     "open-dashboards" {
         Write-Host "[*] Abriendo interfaces web en el navegador por defecto..." -ForegroundColor Cyan
-        Start-Process "http://localhost:8080"  # Adminer
-        Start-Process "http://localhost:8081"  # Mongo Express
-        Start-Process "http://localhost:5540"  # RedisInsight
-        Start-Process "http://localhost:7474"  # Neo4j Browser
-        Start-Process "http://localhost:8086"  # InfluxDB
-        Write-Host "[✔] Pestañas abiertas en el navegador." -ForegroundColor Green
+        Start-Process "http://localhost:8080"
+        Start-Process "http://localhost:8081"
+        Start-Process "http://localhost:5540"
+        Start-Process "http://localhost:7474"
+        Start-Process "http://localhost:8086"
+        Write-Host "[OK] Pestanas abiertas en el navegador." -ForegroundColor Green
     }
 
     "clean" {
-        Write-Host "[!] ADVERTENCIA: Se detendrán los contenedores y se eliminará la carpeta local ./data" -ForegroundColor Red
-        $confirm = Read-Host "¿Deseas continuar? (S/N)"
+        Write-Host "[!] ADVERTENCIA: Se detendran los contenedores y se eliminara la carpeta local ./data" -ForegroundColor Red
+        $confirm = Read-Host "Deseas continuar? (S/N)"
         if ($confirm -eq "S" -or $confirm -eq "s") {
             docker compose down -v
             if (Test-Path "$PSScriptRoot\data") {
                 Remove-Item -Recurse -Force "$PSScriptRoot\data"
-                Write-Host "[✔] Volúmenes locales ./data eliminados con éxito." -ForegroundColor Green
+                Write-Host "[OK] Volumenes locales ./data eliminados con exito." -ForegroundColor Green
             }
         } else {
-            Write-Host "Operación cancelada." -ForegroundColor Yellow
+            Write-Host "Operacion cancelada." -ForegroundColor Yellow
         }
     }
 
@@ -110,9 +112,9 @@ switch ($Action) {
         Write-Host "  up               Levanta todos los motores e interfaces en Docker"
         Write-Host "  status           Muestra el estado de salud de cada contenedor y las URLs"
         Write-Host "  seed             Ejecuta el script de prueba y sembrado en Python"
-        Write-Host "  open-dashboards  Abre los 5 paneles web en el navegador automáticamente"
+        Write-Host "  open-dashboards  Abre los 5 paneles web en el navegador automaticamente"
         Write-Host "  down             Detiene los contenedores sin borrar datos"
-        Write-Host "  clean            Detiene contenedores y limpia volúmenes locales persistidos"
+        Write-Host "  clean            Detiene contenedores y limpia volumenes locales persistidos"
         Write-Host "  help             Muestra esta ayuda"
         Write-Host ""
     }
