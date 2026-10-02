@@ -76,7 +76,7 @@ Cada motor cuenta con su propia interfaz gráfica mapeada en puertos locales par
 | Paradigma / Motor | URL Local | Configuración / Credenciales | ¿Qué inspeccionar en la clase? |
 | :--- | :--- | :--- | :--- |
 | **1. SQL (PostgreSQL)** | [http://localhost:8080](http://localhost:8080) | Servidor: `postgres` \| Puerto: `5433` \| User: `postgres` \| Pass: `postgrespassword` \| DB: `lab_sql` | Adminer: Tablas `usuarios` y `pedidos`, claves foráneas y ejecución de JOINs. |
-| **2. Documental (MongoDB)** | [http://localhost:8081](http://localhost:8081) | Acceso directo (Mongo Express) | Colección `ciudadanos_springfield`: Ver cómo conviven Homero v1 (plano), Marge v4 (arrays) y Homero v10 (alter-egos y ficha médica) sin `ALTER TABLE`. |
+| **2. Documental (MongoDB)** | [http://localhost:8081](http://localhost:8081) | Acceso directo (Mongo Express) | Colección `ciudadanos_springfield`: Ver cómo conviven Homero v1 (plano), Marge v4 (arrays/subdocumentos) y Bart v10 (alter-egos y expediente escolar) sin `ALTER TABLE`. |
 | **3. Clave-Valor (Redis)** | [http://localhost:5540](http://localhost:5540) | Host: `redis` \| Puerto: `6379` \| Pass: `redispassword` *(URL: `redis://default:redispassword@localhost:6379`)* | RedisInsight: Ver la víctima `kuro_otoishi` con su barra regresiva de **TTL (40s)**, el contador atómico de Kira y el ranking de sospechosos de L. |
 | **4. Grafos (Neo4j)** | [http://localhost:7474](http://localhost:7474) | Conexión: `bolt://localhost:7687` \| User: `neo4j` \| Pass: `neo4jpassword` | Neo4j Browser: Grafo visual interactivo con `MATCH (p:Personaje) RETURN p`. Cada nodo tiene su nombre centrado en el círculo. |
 | **5. Series de Tiempo (InfluxDB)** | [http://localhost:8086](http://localhost:8086) | User: `influxadmin` \| Pass: `influxpassword123` \| Org: `devops-lab` | Data Explorer: Graficar `presencia_dementores_pct` comparando la `Torre-Gryffindor` vs las `Mazmorras-Slytherin`. |
@@ -102,9 +102,9 @@ ORDER BY total_gastado DESC;
 ### 2. Documental - MongoDB (`ciudadanos_springfield` - Los Simpsons)
 * **Concepto:** *Schema Evolution* y polimorfismo.
 * **Demostración:** En una base relacional, agregar hobbies o una lista de alter-egos exigiría crear 3 tablas intermedias y correr migraciones bloqueantes. En MongoDB conviven en el mismo documento:
-  * **Temporada 1:** Homero básico con campos planos (`ocupacion`, `direccion_plana`).
-  * **Temporada 4:** Marge con arrays (`hobbies`, `hijos`) y subdocumento `direccion`.
-  * **Temporada 10+:** Homero multifacético con array de alter-egos (`Don Barredora`, `Cosme Fulanito`, `El Hombre Pie`, `Astronauta`), ficha médica con crayones en el cerebro y membresía a `Los Magios`.
+  * **Temporada 1 (Homero):** Campos planos básicos (`ocupacion`, `direccion_plana`).
+  * **Temporada 4 (Marge):** Arrays (`hobbies`, `hijos`) y subdocumento `direccion`.
+  * **Temporada 10+ (Bart):** Array de alter-egos (`El Barto`, `El Chico 'Yo No Fui'`, `Bartman`), subdocumento `expediente_disciplinario_skinner` con castigos en pizarra y campo dinámico `nemesis_mortal`.
 ```javascript
 // Buscar personajes con alter-egos exitosos:
 db.ciudadanos_springfield.find({ "alter_egos.exito": true });

@@ -281,29 +281,30 @@ def demo_mongodb():
                 "infracciones": 0
             }
         },
-        # Documento 3 (Temporada 10+ - Polimorfismo extremo: Alter-egos multiples, estructura medica y membresias):
+        # Documento 3 (Temporada 10+ - Polimorfismo extremo: Alter-egos, historial de detenciones y nemesis):
         {
             "temporada_aparicion": 10,
-            "nombre": "Homero J. Simpson",
+            "nombre": "Bartholomew Jo-Jo Simpson",
+            "apodo": "Bart",
+            "edad": 10,
             "alter_egos": [
-                {"nombre": "Don Barredora", "vehiculo": "Camion con pala quitanieves", "exito": True},
-                {"nombre": "Cosme Fulanito", "disfraz": "Bigote postizo y galera", "exito": False},
-                {"nombre": "El Hombre Pie", "arma": "Pasteles de crema en la cara", "exito": True},
-                {"nombre": "Astronauta", "logro": "Comio papitas flotando en gravedad cero", "exito": True}
+                {"nombre": "El Barto", "actividad": "Grafitero clandestino", "exito": True},
+                {"nombre": "El Chico 'Yo No Fui'", "frase": "Yo no fui", "exito": True},
+                {"nombre": "Bartman", "arma": "Resortera y capa", "exito": True}
             ],
-            "ficha_medica_dr_hibbert": {
-                "crayones_en_el_cerebro": 1,
-                "infartos_superados": 3,
-                "tolerancia_alcohol": "Sobrehumana"
+            "expediente_disciplinario_skinner": {
+                "detenciones_en_pizarra": 450,
+                "frases_castigo_memorables": ["No instigare a la revolucion", "El gas del profe no es un ambientador"],
+                "veces_enviado_a_direccion": 85
             },
-            "membresias": ["Club de los Magios (Numero 908)", "Equipo de Bolos Los Pin Pals"],
-            "deuda_taberna_moe_usd": 1540.50
+            "nemesis_mortal": "Bob Patino (Sideshow Bob)",
+            "mascota_favorita": "Ayudante de Santa (Galgo)"
         }
     ]
 
     coleccion.insert_many(simpsons_mutantes)
     console.print(f"[green][OK] Insertados {len(simpsons_mutantes)} documentos de Los Simpsons con estructuras totalmente polimorficas.[/]")
-    console.print("[dim]Nota para la clase: Homero v1 tiene campos planos, Marge tiene arrays y subdocumentos, y Homero v10 tiene alter-egos y ficha medica sin ningun ALTER TABLE.[/]\n")
+    console.print("[dim]Nota para la clase: Homero (v1) tiene campos planos, Marge (v4) tiene subdocumento de direccion y Bart (v10) tiene alter-egos y expediente escolar sin ningun ALTER TABLE.[/]\n")
 
     # Consulta y exposicion en tabla
     resultados = list(coleccion.find())
@@ -320,7 +321,7 @@ def demo_mongodb():
         
         if "alter_egos" in doc:
             nombres_egos = [e["nombre"] for e in doc["alter_egos"]]
-            detalle = f"Alter-Egos: {', '.join(nombres_egos)} | Crayones: {doc['ficha_medica_dr_hibbert']['crayones_en_el_cerebro']}"
+            detalle = f"Alter-Egos: {', '.join(nombres_egos)} | Detenciones: {doc['expediente_disciplinario_skinner']['detenciones_en_pizarra']}"
         elif "direccion" in doc:
             detalle = f"Hijos: {', '.join(doc.get('hijos', []))} | Dir: {doc['direccion']['calle']}"
         else:
