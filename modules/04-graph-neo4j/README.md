@@ -12,14 +12,20 @@ En Neo4j (*index-free adjacency*), cada nodo contiene punteros en memoria RAM a 
 ## 2. Ejemplo Divertido para la Clase: Multiverso Rick y Morty
 Los nodos representan a los personajes del universo de Rick y Morty, y la primera propiedad creada es estrictamente `name`:
 - **Nodos:** `Rick Sanchez`, `Morty Smith`, `Summer Smith`, `Jerry Smith`, `Beth Smith`, `Hombre Pajaro`, `Evil Morty`, `Mr Meeseeks`.
-- **Relaciones con propiedades:**
-  - `(Rick)-[:VIAJA_CON {portales: 450}]->(Morty)`
-  - `(Rick)-[:AMIGO_DE {lealtad: 'Extrema'}]->(Hombre Pajaro)`
-  - `(Rick)-[:DESPRECIA_A {motivo: 'Incompetencia'}]->(Jerry)`
-  - `(Rick)-[:INVOCO_A]->(Mr Meeseeks)`
-  - `(Jerry)-[:PIDIO_AYUDA_A]->(Mr Meeseeks)`
-  - `(Mr Meeseeks)-[:QUIERE_ELIMINAR_A {motivo: 'Existir es dolor'}]->(Jerry)`
-  - `(Evil Morty)-[:ENEMIGO_MORTAL_DE]->(Rick)`
+- **Relaciones que se repiten entre nodos (Tipos de Aristas Reutilizables):**
+  - **`:HIJO_DE` (Parentesco familiar repetido):**
+    - `(Morty)-[:HIJO_DE]->(Beth)`
+    - `(Morty)-[:HIJO_DE]->(Jerry)`
+    - `(Summer)-[:HIJO_DE]->(Beth)`
+    - `(Summer)-[:HIJO_DE]->(Jerry)`
+    - `(Beth)-[:HIJO_DE]->(Rick)`
+  - **`:NIETO_DE`:** `(Morty)-[:NIETO_DE]->(Rick)`, `(Summer)-[:NIETO_DE]->(Rick)`
+  - **`:AMIGO_DE`:** `(Rick)-[:AMIGO_DE]->(Hombre Pajaro)`, `(Morty)-[:AMIGO_DE]->(Hombre Pajaro)`, `(Jerry)-[:AMIGO_DE]->(Mr Meeseeks)`
+  - **`:ODIA_A`:** `(Jerry)-[:ODIA_A]->(Rick)`, `(Rick)-[:ODIA_A]->(Jerry)`, `(Evil Morty)-[:ODIA_A]->(Rick)`
+  - **`:VIAJA_CON`:** `(Rick)-[:VIAJA_CON]->(Morty)`, `(Morty)-[:VIAJA_CON]->(Rick)`, `(Summer)-[:VIAJA_CON]->(Rick)`
+  - **`:HERMANO_DE`:** `(Morty)-[:HERMANO_DE]->(Summer)`, `(Summer)-[:HERMANO_DE]->(Morty)`
+  - **`:CASADA_CON` / `:CASADO_CON`:** `(Beth) <-> (Jerry)`
+  - **Tragedia de Meeseeks:** `(Rick)-[:INVOCO_A]->(Meeseeks)`, `(Meeseeks)-[:QUIERE_ELIMINAR_A]->(Jerry)`
 
 > **Nota Visual para la Clase:** Al usar `name` como primera propiedad de cada nodo, la interfaz de **Neo4j Browser** dibuja directamente el nombre del personaje en el centro del circulo sin mostrar IDs ni nombres extraños.
 
@@ -43,19 +49,26 @@ Los nodos representan a los personajes del universo de Rick y Morty, y la primer
 MATCH (p:Personaje) RETURN p;
 ```
 
-### B. ¿Quienes viajan juntos por las dimensiones?
+### B. Filtrar por la relacion repetida `:HIJO_DE` (Arbol Familiar)
 ```cypher
-MATCH p=()-[r:VIAJA_CON]->() RETURN p;
+MATCH (hijo:Personaje)-[:HIJO_DE]->(padre:Personaje)
+RETURN hijo.name AS descendiente, padre.name AS progenitor;
 ```
 
-### C. Analizar el Conflicto Existencial de Mr Meeseeks con Jerry
+### C. Traversal de 2 saltos: Descubrir abuelos sin saber quien es el padre
+```cypher
+MATCH (nieto:Personaje)-[:HIJO_DE]->(:Personaje)-[:HIJO_DE]->(abuelo:Personaje)
+RETURN nieto.name AS nieto, abuelo.name AS abuelo;
+```
+
+### D. ¿Quienes se odian mutuamente? (Relacion bidireccional `:ODIA_A`)
+```cypher
+MATCH (a:Personaje)-[:ODIA_A]->(b:Personaje)
+RETURN a.name AS odiador, b.name AS odiado;
+```
+
+### E. Analizar el Conflicto Existencial de Mr Meeseeks con Jerry
 ```cypher
 MATCH (m:Personaje {name: 'Mr Meeseeks'})-[r:QUIERE_ELIMINAR_A]->(j:Personaje {name: 'Jerry Smith'})
 RETURN m.name, r.motivo, j.name;
-```
-
-### D. Red de conexiones directas de Rick Sanchez
-```cypher
-MATCH (rick:Personaje {name: 'Rick Sanchez'})-[r]-(otro:Personaje)
-RETURN otro.name AS personaje, type(r) AS relacion, otro.dimension AS dimension;
 ```

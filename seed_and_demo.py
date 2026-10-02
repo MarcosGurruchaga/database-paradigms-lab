@@ -449,31 +449,47 @@ def demo_neo4j():
         CREATE (evil_morty:Personaje {name: 'Evil Morty', dimension: 'Desconocida', especie: 'Humano', rol: 'Presidente de la Ciudadela'})
         CREATE (meeseeks:Personaje {name: 'Mr Meeseeks', dimension: 'Caja Meeseeks', especie: 'Entidad Temporal', proposito: 'Bajar 2 golpes de golf'})
 
-        // 2. Relaciones Familiares y de Aventura
-        CREATE (rick)-[:VIAJA_CON {portales_abiertos: 450}]->(morty)
-        CREATE (morty)-[:VIAJA_CON]->(rick)
+        // 2. Relaciones de Parentesco y Familia (Relacion repetida :HIJO_DE entre multiples nodos)
+        CREATE (morty)-[:HIJO_DE]->(beth)
+        CREATE (morty)-[:HIJO_DE]->(jerry)
+        CREATE (summer)-[:HIJO_DE]->(beth)
+        CREATE (summer)-[:HIJO_DE]->(jerry)
+        CREATE (beth)-[:HIJO_DE]->(rick)
+
+        // Relaciones de Abuelo / Nieto
+        CREATE (morty)-[:NIETO_DE]->(rick)
+        CREATE (summer)-[:NIETO_DE]->(rick)
+
+        // Relaciones Fraternales y Matrimoniales
         CREATE (morty)-[:HERMANO_DE]->(summer)
         CREATE (summer)-[:HERMANO_DE]->(morty)
-        CREATE (summer)-[:SIGUE_AVENTURAS_DE]->(rick)
         CREATE (beth)-[:CASADA_CON]->(jerry)
         CREATE (jerry)-[:CASADO_CON]->(beth)
 
-        // 3. Amistades y Alianzas Fuertes
+        // 3. Aventuras y Viajes Interdimensionales (:VIAJA_CON repetida)
+        CREATE (rick)-[:VIAJA_CON {portales_abiertos: 450}]->(morty)
+        CREATE (morty)-[:VIAJA_CON]->(rick)
+        CREATE (summer)-[:VIAJA_CON]->(rick)
+
+        // 4. Amistades y Alianzas Fuertes (:AMIGO_DE repetida)
         CREATE (rick)-[:AMIGO_DE {nivel_lealtad: 'Extremo'}]->(birdperson)
         CREATE (birdperson)-[:AMIGO_DE]->(rick)
+        CREATE (morty)-[:AMIGO_DE]->(birdperson)
+        CREATE (jerry)-[:AMIGO_DE]->(meeseeks)
 
-        // 4. Invocacion y Tragedia Existencial de Mr Meeseeks
+        // 5. Invocacion y Tragedia Existencial de Mr Meeseeks
         CREATE (rick)-[:INVOCO_A]->(meeseeks)
         CREATE (jerry)-[:PIDIO_AYUDA_A]->(meeseeks)
         CREATE (meeseeks)-[:QUIERE_ELIMINAR_A {motivo: 'Existir es dolor para un Meeseeks'}]->(jerry)
 
-        // 5. Hostilidad, Desprecio y Enemistad
-        CREATE (rick)-[:DESPRECIA_A {motivo: 'Incompetencia cronica'}]->(jerry)
+        // 6. Hostilidad, Desprecio y Odio (:ODIA_A repetida entre nodos)
         CREATE (jerry)-[:ODIA_A]->(rick)
-        CREATE (evil_morty)-[:ENEMIGO_MORTAL_DE]->(rick)
+        CREATE (rick)-[:ODIA_A]->(jerry)
+        CREATE (evil_morty)-[:ODIA_A]->(rick)
+        CREATE (rick)-[:DESPRECIA_A {motivo: 'Incompetencia cronica'}]->(jerry)
         """
         session.run(cypher_seed)
-        console.print("[green][OK] Grafo de Rick y Morty sembrado: Nodos (:Personaje) con propiedad 'name' y relaciones enriquecidas.[/]\n")
+        console.print("[green][OK] Grafo de Rick y Morty sembrado con relaciones repetidas (:HIJO_DE, :AMIGO_DE, :ODIA_A, :VIAJA_CON).[/]\n")
 
         # Consulta 1: Red de relaciones de Rick (Aliados, Companeros y Enemigos)
         query_rick = """
@@ -494,7 +510,25 @@ def demo_neo4j():
 
         console.print(tabla_rick)
 
-        # Consulta 2: Conflicto - ¿Por que Mr Meeseeks quiere eliminar a Jerry?
+        # Consulta 2: Demostracion de Relacion Repetida entre varios nodos (:HIJO_DE)
+        query_hijos = """
+        MATCH (descendiente:Personaje)-[:HIJO_DE]->(progenitor:Personaje)
+        RETURN descendiente.name AS hijo, progenitor.name AS padre_madre
+        ORDER BY padre_madre, hijo
+        """
+        hijos_data = session.run(query_hijos).data()
+
+        tabla_hijos = Table(title="Neo4j: Relacion Repetida entre Nodos (:HIJO_DE - Arbol Familiar)", box=box.ROUNDED)
+        tabla_hijos.add_column("Personaje (Hijo/a)", style="cyan")
+        tabla_hijos.add_column("Tipo de Arista", style="magenta", justify="center")
+        tabla_hijos.add_column("Padre / Madre", style="bold green")
+
+        for h in hijos_data:
+            tabla_hijos.add_row(h["hijo"], "-[:HIJO_DE]->", h["padre_madre"])
+
+        console.print(tabla_hijos)
+
+        # Consulta 3: Conflicto - ¿Por que Mr Meeseeks quiere eliminar a Jerry?
         query_meeseeks = """
         MATCH (m:Personaje {name: 'Mr Meeseeks'})-[r:QUIERE_ELIMINAR_A]->(j:Personaje {name: 'Jerry Smith'})
         RETURN m.name AS agresor, type(r) AS accion, j.name AS victima, r.motivo AS causa_filosofica

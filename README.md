@@ -120,19 +120,23 @@ db.ciudadanos_springfield.find({ "alter_egos.exito": true });
 
 ### 4. Grafos - Neo4j (Rick y Morty)
 * **Concepto:** Red de relaciones complejas. Las aristas son elementos de primer orden con atributos y dirección.
-* **Modelado:** Cada nodo es un `:Personaje` con la propiedad `name` en primer lugar (`Rick Sanchez`, `Morty Smith`, `Jerry Smith`, `Hombre Pajaro`, `Mr Meeseeks`, `Evil Morty`).
+* **Relaciones repetidas entre nodos:** Aristas compartidas como `:HIJO_DE` (Morty y Summer respecto a Beth y Jerry; Beth respecto a Rick), `:AMIGO_DE`, `:ODIA_A`, `:NIETO_DE` y `:VIAJA_CON`.
 * **Consultas Cypher para la clase:**
 ```cypher
 // 1. Ver todo el multiverso conectado
 MATCH (p:Personaje) RETURN p;
 
-// 2. Traversal: ¿Por que Mr Meeseeks quiere eliminar a Jerry?
+// 2. Filtrar por la relacion repetida :HIJO_DE (Arbol familiar)
+MATCH (hijo:Personaje)-[:HIJO_DE]->(padre:Personaje)
+RETURN hijo.name AS descendiente, padre.name AS progenitor;
+
+// 3. Traversal de 2 saltos: Descubrir abuelos sin saber quien es el padre
+MATCH (nieto:Personaje)-[:HIJO_DE]->(:Personaje)-[:HIJO_DE]->(abuelo:Personaje)
+RETURN nieto.name AS nieto, abuelo.name AS abuelo;
+
+// 4. Traversal de conflicto: ¿Por que Mr Meeseeks quiere eliminar a Jerry?
 MATCH (m:Personaje {name: 'Mr Meeseeks'})-[r:QUIERE_ELIMINAR_A]->(j:Personaje {name: 'Jerry Smith'})
 RETURN m.name, r.motivo, j.name;
-
-// 3. Aliados y enemigos directos de Rick
-MATCH (rick:Personaje {name: 'Rick Sanchez'})-[r]-(otro:Personaje)
-RETURN otro.name AS personaje, type(r) AS relacion, otro.rol AS rol;
 ```
 
 ### 5. Series Temporales - InfluxDB (Harry Potter / Hogwarts)
