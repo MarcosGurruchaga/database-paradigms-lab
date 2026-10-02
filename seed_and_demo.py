@@ -449,47 +449,38 @@ def demo_neo4j():
         CREATE (evil_morty:Personaje {name: 'Evil Morty', dimension: 'Desconocida', especie: 'Humano', rol: 'Presidente de la Ciudadela'})
         CREATE (meeseeks:Personaje {name: 'Mr Meeseeks', dimension: 'Caja Meeseeks', especie: 'Entidad Temporal', proposito: 'Bajar 2 golpes de golf'})
 
-        // 2. Relaciones de Parentesco y Familia (Relacion repetida :HIJO_DE entre multiples nodos)
+        // 2. Relaciones Familiares y de Aventura (Originales)
+        CREATE (rick)-[:VIAJA_CON {portales_abiertos: 450}]->(morty)
+        CREATE (morty)-[:VIAJA_CON]->(rick)
+        CREATE (morty)-[:HERMANO_DE]->(summer)
+        CREATE (summer)-[:HERMANO_DE]->(morty)
+        CREATE (summer)-[:SIGUE_AVENTURAS_DE]->(rick)
+        CREATE (beth)-[:CASADA_CON]->(jerry)
+        CREATE (jerry)-[:CASADO_CON]->(beth)
+
+        // Relacion Repetida entre Multiples Nodos: :HIJO_DE
         CREATE (morty)-[:HIJO_DE]->(beth)
         CREATE (morty)-[:HIJO_DE]->(jerry)
         CREATE (summer)-[:HIJO_DE]->(beth)
         CREATE (summer)-[:HIJO_DE]->(jerry)
         CREATE (beth)-[:HIJO_DE]->(rick)
 
-        // Relaciones de Abuelo / Nieto
-        CREATE (morty)-[:NIETO_DE]->(rick)
-        CREATE (summer)-[:NIETO_DE]->(rick)
-
-        // Relaciones Fraternales y Matrimoniales
-        CREATE (morty)-[:HERMANO_DE]->(summer)
-        CREATE (summer)-[:HERMANO_DE]->(morty)
-        CREATE (beth)-[:CASADA_CON]->(jerry)
-        CREATE (jerry)-[:CASADO_CON]->(beth)
-
-        // 3. Aventuras y Viajes Interdimensionales (:VIAJA_CON repetida)
-        CREATE (rick)-[:VIAJA_CON {portales_abiertos: 450}]->(morty)
-        CREATE (morty)-[:VIAJA_CON]->(rick)
-        CREATE (summer)-[:VIAJA_CON]->(rick)
-
-        // 4. Amistades y Alianzas Fuertes (:AMIGO_DE repetida)
+        // 3. Amistades y Alianzas Fuertes (Originales)
         CREATE (rick)-[:AMIGO_DE {nivel_lealtad: 'Extremo'}]->(birdperson)
         CREATE (birdperson)-[:AMIGO_DE]->(rick)
-        CREATE (morty)-[:AMIGO_DE]->(birdperson)
-        CREATE (jerry)-[:AMIGO_DE]->(meeseeks)
 
-        // 5. Invocacion y Tragedia Existencial de Mr Meeseeks
+        // 4. Invocacion y Tragedia Existencial de Mr Meeseeks (Originales)
         CREATE (rick)-[:INVOCO_A]->(meeseeks)
         CREATE (jerry)-[:PIDIO_AYUDA_A]->(meeseeks)
         CREATE (meeseeks)-[:QUIERE_ELIMINAR_A {motivo: 'Existir es dolor para un Meeseeks'}]->(jerry)
 
-        // 6. Hostilidad, Desprecio y Odio (:ODIA_A repetida entre nodos)
-        CREATE (jerry)-[:ODIA_A]->(rick)
-        CREATE (rick)-[:ODIA_A]->(jerry)
-        CREATE (evil_morty)-[:ODIA_A]->(rick)
+        // 5. Hostilidad, Desprecio y Enemistad (Originales)
         CREATE (rick)-[:DESPRECIA_A {motivo: 'Incompetencia cronica'}]->(jerry)
+        CREATE (jerry)-[:ODIA_A]->(rick)
+        CREATE (evil_morty)-[:ENEMIGO_MORTAL_DE]->(rick)
         """
         session.run(cypher_seed)
-        console.print("[green][OK] Grafo de Rick y Morty sembrado con relaciones repetidas (:HIJO_DE, :AMIGO_DE, :ODIA_A, :VIAJA_CON).[/]\n")
+        console.print("[green][OK] Grafo de Rick y Morty sembrado: Relaciones originales + aristas repetidas (:HIJO_DE).[/]\n")
 
         # Consulta 1: Red de relaciones de Rick (Aliados, Companeros y Enemigos)
         query_rick = """

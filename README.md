@@ -120,7 +120,7 @@ db.ciudadanos_springfield.find({ "alter_egos.exito": true });
 
 ### 4. Grafos - Neo4j (Rick y Morty)
 * **Concepto:** Red de relaciones complejas. Las aristas son elementos de primer orden con atributos y dirección.
-* **Relaciones repetidas entre nodos:** Aristas compartidas como `:HIJO_DE` (Morty y Summer respecto a Beth y Jerry; Beth respecto a Rick), `:AMIGO_DE`, `:ODIA_A`, `:NIETO_DE` y `:VIAJA_CON`.
+* **Relación repetida entre nodos:** Arista genealógica compartida `:HIJO_DE` (Morty y Summer respecto a Beth y Jerry; Beth respecto a Rick).
 * **Consultas Cypher para la clase:**
 ```cypher
 // 1. Ver todo el multiverso conectado

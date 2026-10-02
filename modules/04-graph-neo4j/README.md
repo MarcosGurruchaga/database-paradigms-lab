@@ -12,20 +12,25 @@ En Neo4j (*index-free adjacency*), cada nodo contiene punteros en memoria RAM a 
 ## 2. Ejemplo Divertido para la Clase: Multiverso Rick y Morty
 Los nodos representan a los personajes del universo de Rick y Morty, y la primera propiedad creada es estrictamente `name`:
 - **Nodos:** `Rick Sanchez`, `Morty Smith`, `Summer Smith`, `Jerry Smith`, `Beth Smith`, `Hombre Pajaro`, `Evil Morty`, `Mr Meeseeks`.
-- **Relaciones que se repiten entre nodos (Tipos de Aristas Reutilizables):**
-  - **`:HIJO_DE` (Parentesco familiar repetido):**
-    - `(Morty)-[:HIJO_DE]->(Beth)`
-    - `(Morty)-[:HIJO_DE]->(Jerry)`
-    - `(Summer)-[:HIJO_DE]->(Beth)`
-    - `(Summer)-[:HIJO_DE]->(Jerry)`
-    - `(Beth)-[:HIJO_DE]->(Rick)`
-  - **`:NIETO_DE`:** `(Morty)-[:NIETO_DE]->(Rick)`, `(Summer)-[:NIETO_DE]->(Rick)`
-  - **`:AMIGO_DE`:** `(Rick)-[:AMIGO_DE]->(Hombre Pajaro)`, `(Morty)-[:AMIGO_DE]->(Hombre Pajaro)`, `(Jerry)-[:AMIGO_DE]->(Mr Meeseeks)`
-  - **`:ODIA_A`:** `(Jerry)-[:ODIA_A]->(Rick)`, `(Rick)-[:ODIA_A]->(Jerry)`, `(Evil Morty)-[:ODIA_A]->(Rick)`
-  - **`:VIAJA_CON`:** `(Rick)-[:VIAJA_CON]->(Morty)`, `(Morty)-[:VIAJA_CON]->(Rick)`, `(Summer)-[:VIAJA_CON]->(Rick)`
-  - **`:HERMANO_DE`:** `(Morty)-[:HERMANO_DE]->(Summer)`, `(Summer)-[:HERMANO_DE]->(Morty)`
-  - **`:CASADA_CON` / `:CASADO_CON`:** `(Beth) <-> (Jerry)`
-  - **Tragedia de Meeseeks:** `(Rick)-[:INVOCO_A]->(Meeseeks)`, `(Meeseeks)-[:QUIERE_ELIMINAR_A]->(Jerry)`
+- **Relaciones del Grafo (Originales + Arista Repetida `:HIJO_DE`):**
+  - **`:HIJO_DE` (Relación familiar repetida entre múltiples nodos):**
+    - `(Morty Smith)-[:HIJO_DE]->(Beth Smith)`
+    - `(Morty Smith)-[:HIJO_DE]->(Jerry Smith)`
+    - `(Summer Smith)-[:HIJO_DE]->(Beth Smith)`
+    - `(Summer Smith)-[:HIJO_DE]->(Jerry Smith)`
+    - `(Beth Smith)-[:HIJO_DE]->(Rick Sanchez)`
+  - **Relaciones Originales de Aventura, Familia y Hostilidad:**
+    - `(Rick)-[:VIAJA_CON {portales: 450}]->(Morty)` y `(Morty)-[:VIAJA_CON]->(Rick)`
+    - `(Morty)-[:HERMANO_DE]->(Summer)` y `(Summer)-[:HERMANO_DE]->(Morty)`
+    - `(Summer)-[:SIGUE_AVENTURAS_DE]->(Rick)`
+    - `(Beth)-[:CASADA_CON]->(Jerry)` y `(Jerry)-[:CASADO_CON]->(Beth)`
+    - `(Rick)-[:AMIGO_DE {lealtad: 'Extrema'}]->(Hombre Pajaro)` y `(Hombre Pajaro)-[:AMIGO_DE]->(Rick)`
+    - `(Rick)-[:INVOCO_A]->(Mr Meeseeks)`
+    - `(Jerry)-[:PIDIO_AYUDA_A]->(Mr Meeseeks)`
+    - `(Mr Meeseeks)-[:QUIERE_ELIMINAR_A {motivo: 'Existir es dolor'}]->(Jerry)`
+    - `(Rick)-[:DESPRECIA_A {motivo: 'Incompetencia'}]->(Jerry)`
+    - `(Jerry)-[:ODIA_A]->(Rick)`
+    - `(Evil Morty)-[:ENEMIGO_MORTAL_DE]->(Rick)`
 
 > **Nota Visual para la Clase:** Al usar `name` como primera propiedad de cada nodo, la interfaz de **Neo4j Browser** dibuja directamente el nombre del personaje en el centro del circulo sin mostrar IDs ni nombres extraños.
 
